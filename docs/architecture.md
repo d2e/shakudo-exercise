@@ -149,3 +149,44 @@ Updating any configuration key triggers Kubernetes to automatically initiate an 
 | **HorizontalPodAutoscaler (HPA)** | Autoscales pods based on CPU/RAM utilization | Disabled | 2 - 5 pods | 3 - 20 pods |
 | **Pod Anti-Affinity** | Distributes pods across distinct physical compute nodes | Disabled | Optional | Preferred host anti-affinity |
 | **NetworkPolicy** | Drops unauthorized ingress/egress east-west traffic | Disabled | Enabled | Enabled (Strict) |
+
+---
+
+## 6. OIDC Discovery, JWT Validation & Kubernetes RBAC Integration
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as Client Application / Caller
+    participant Service as Shakudo K8s Service (Pod)
+    participant OIDC as Identity Provider (OIDC/JWKS)
+    participant K8sAPI as Kubernetes API Server
+
+    Note over Service,OIDC: Startup / Discovery Phase
+    Service->>OIDC: GET /.well-known/openid-configuration
+    OIDC-->>Service: Issuer, jwks_uri metadata
+    Service->>OIDC: GET /api/v1/jwks.json
+    OIDC-->>Service: Public Key Set (RS256 keys)
+
+    Note over Client,Service: Authenticated Request Phase
+    Client->>Service: GET /api/v1/namespaces/{namespace}/pods<br/>(Authorization: Bearer <JWT>)
+    Service->>Service: 1. Extract & parse JWT token header<br/>2. Match 'kid' with cached JWKS public key<br/>3. Verify RS256 signature, exp, nbf, iss, aud
+    alt Token Invalid / Expired / Missing
+        Service-->>Client: 401 Unauthorized / 403 Forbidden
+    else Token Valid
+        Service->>K8sAPI: GET /api/v1/namespaces/{namespace}/pods<br/>(In-cluster ServiceAccount token)
+        alt Namespace Permitted by Role / RoleBinding
+            K8sAPI-->>Service: PodList JSON
+            Service-->>Client: 200 OK (Pod summaries: phase, readiness, IP, restarts)
+        else Namespace Disallowed by RBAC (e.g. kube-system)
+            K8sAPI-->>Service: 403 Forbidden (RBAC access denied)
+            Service-->>Client: 403 Forbidden ("RBAC forbidden: ServiceAccount is not permitted...")
+        end
+    end
+```
+
+### Key Security & Design Invariants:
+1. **Cryptographic Validation**: JWTs are strictly validated using RS256 asymmetric cryptography. Signatures, expiration (`exp`), not-before (`nbf`), issuer (`iss`), and audience (`aud`) are enforced on every request.
+2. **Least Privilege RBAC**: The workload `ServiceAccount` is bounded strictly by a namespace-scoped `Role` and `RoleBinding` granting read-only verbs (`get`, `list`, `watch`) on `pods` and `pods/status`.
+3. **Defense-in-Depth**: Requests querying namespaces beyond the bound scope are blocked at the Kubernetes API layer, returning an explicit 403 error without crashing or leaking sensitive cluster metadata.
+4. **Resilient Client Initialization**: The service attempts `load_incluster_config()` when running in Kubernetes pods, falling back to local `load_kube_config()` for developer testing.

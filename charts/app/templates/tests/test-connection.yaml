@@ -26,4 +26,4 @@ spec:
           drop:
             - ALL
       command: ['wget']
-      args: ['-O-', '-q', '--timeout=3', 'http://{{ include "app.fullname" . }}:{{ .Values.service.port }}']
+      args: ['-O-', '-q', '--timeout=3', 'http://{{ include "app.fullname" . }}:{{ .Values.service.port }}/healthz']

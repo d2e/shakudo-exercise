@@ -10,7 +10,18 @@ A production-grade Kubernetes architecture framework designed to maintain Helm c
 .
 ├── Makefile                        # Operational entrypoint (lint, render, deploy, test, clean)
 ├── README.md                       # Architectural documentation & operational runbook
+├── Dockerfile                      # Multi-stage PSS-restricted non-root container build
+├── pytest.ini                      # Pytest discovery configuration
 ├── .gitignore                      # Git exclusion rules
+├── app/                            # Hardened Python microservice
+│   ├── main.py                     # FastAPI routes (/healthz, OIDC discovery, pod listing)
+│   ├── auth.py                     # OIDC discovery, JWKS management, JWT RS256 validation
+│   ├── k8s_client.py               # Kubernetes API client (scoped namespace listing)
+│   ├── models.py                   # Pydantic schemas (TokenClaims, PodSummary, etc.)
+│   └── requirements.txt            # Microservice dependencies
+├── tests/                          # Automated unit test suite
+│   ├── test_auth.py                # OIDC & cryptographic JWT validation test cases
+│   └── test_k8s.py                 # Kubernetes mock integration test cases
 ├── charts/                         # Reusable, version-controlled Helm charts
 │   └── app/
 │       ├── Chart.yaml              # Chart metadata (SemVer v2, appVersion)
@@ -22,6 +33,7 @@ A production-grade Kubernetes architecture framework designed to maintain Helm c
 │           ├── deployment.yaml     # Hardened workload with rolling updates & probes
 │           ├── service.yaml        # Standard ClusterIP service
 │           ├── serviceaccount.yaml # Least-privilege ServiceAccount
+│           ├── rbac.yaml           # Least-privilege Role & RoleBinding for Pod listing
 │           ├── configmap.yaml      # Config injection with SHA256 checksum reload
 │           ├── secret.yaml         # Secret template
 │           ├── ingress.yaml        # Ingress routing (Traefik / NGINX)
@@ -45,7 +57,8 @@ A production-grade Kubernetes architecture framework designed to maintain Helm c
     ├── lint.sh                     # Chart & environment schema linting
     ├── render.sh                   # Manifest dry-run rendering per environment
     ├── deploy.sh                   # Atomic, zero-downtime rolling deployment with rollback
-    └── test.sh                     # Post-deployment validation test runner
+    ├── test.sh                     # Post-deployment validation test runner
+    └── test_e2e.py                 # Live end-to-end OIDC, JWT, and RBAC verification
 ```
 
 ---
@@ -121,11 +134,20 @@ make render-prod
 
 ### Deployment & Testing
 ```bash
+# Run unit tests for OIDC, JWT crypto, and Kubernetes integration
+make test-unit
+
 # Atomically deploy to dev namespace with health checks and timeout
 make deploy-dev
 
 # Run automated Helm post-deployment integration tests
 make test-dev
+
+# Run end-to-end OIDC, JWT, and RBAC pod listing tests against live cluster
+make test-e2e
+
+# Run all tests (unit + helm integration + live e2e)
+make test-all
 
 # Inspect live cluster status (Pods, Services, Ingress, PDB)
 make status-dev

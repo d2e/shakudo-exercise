@@ -72,6 +72,17 @@ make status-dev
 ```
 * **What to say**: *"Here we see our pod running healthy in namespace `app-dev`, backed by a ClusterIP service, active endpoints, and a Traefik ingress route."*
 
+### Step 5: OIDC Discovery, JWT Validation & RBAC Pod Listing E2E
+```bash
+make test-e2e
+```
+* **What to say**: *"Finally, we run our live end-to-end integration test against the deployed pod. This validates all five core security and platform requirements:*
+  1. *Health check `/healthz` responds 200 OK.*
+  2. *OIDC Discovery: queries `/.well-known/openid-configuration` and caches the RS256 JWKS public key set.*
+  3. *Secure Token Handling: an unauthenticated request without a Bearer token is rejected with 401 Unauthorized.*
+  4. *Kubernetes API Integration: with a valid cryptographically signed JWT, we query `GET /api/v1/namespaces/app-dev/pods` and receive structured pod status, ready count, IP, and restart metrics.*
+  5. *Role and RoleBinding Enforcement: querying an unauthorized namespace like `kube-system` triggers an in-cluster 403 Forbidden error from the Kubernetes API, strictly proving that our ServiceAccount least-privilege RBAC is actively enforced."*
+
 ---
 
 ## Segment 4: Production Readiness & Next Steps (7 mins)

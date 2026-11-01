@@ -11,7 +11,13 @@ environments/**/secrets.yaml
 # Environment & local overrides
 .env
 .env.*
+.venv/
 *.local
+
+# Python artifacts
+__pycache__/
+*.pyc
+.pytest_cache/
 
 # Logs
 *.log

@@ -165,6 +165,20 @@
         "maxUnavailable": { "type": ["integer", "string"] }
       }
     },
+    "rbac": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "targetNamespace": { "type": "string" },
+        "role": {
+          "type": "object",
+          "properties": {
+            "rules": { "type": "array" }
+          }
+        }
+      }
+    },
     "networkPolicy": {
       "type": "object",
       "additionalProperties": false,
