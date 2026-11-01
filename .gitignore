@@ -1,12 +1,35 @@
 # Kubernetes & Helm Artifacts
 *.tgz
 *.lock
-.DS_Store
+charts/app/charts/
+charts/app/Chart.lock
 
 # Secret values (NEVER commit plain secrets)
 environments/**/secrets.yaml
 !environments/**/secrets.example.yaml
 
-# Temporary rendering outputs
-tmp/
+# Environment & local overrides
+.env
+.env.*
+*.local
+
+# Logs
+*.log
+
+# Editor & Backup artifacts
+*.swp
+*.bak
 *.tmp
+*~
+*.orig
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Rendered output scratch directories
+tmp/
+output/
+rendered/

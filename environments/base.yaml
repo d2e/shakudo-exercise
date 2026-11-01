@@ -6,6 +6,9 @@ service:
   port: 80
   targetPort: http
 
+ingress:
+  className: "traefik"
+
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 101

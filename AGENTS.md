@@ -18,9 +18,9 @@ You are the Senior Kubernetes Platform Architect and Pair Programmer for the `sh
    - Mount dedicated `emptyDir` tmpfs volumes for writeable scratch locations (`/tmp`, cache paths).
 
 2. **Hierarchical Configuration (Zero Config Drift)**:
-   - Canonical chart defaults reside strictly in [`charts/app/values.yaml`](file:///home/dt/project/shakudo_exercise/charts/app/values.yaml) and are enforced by [`charts/app/values.schema.json`](file:///home/dt/project/shakudo_exercise/charts/app/values.schema.json).
-   - Organization-wide security and networking standards reside in [`environments/base.yaml`](file:///home/dt/project/shakudo_exercise/environments/base.yaml).
-   - Environment overlays reside in [`environments/{dev,staging,prod}/values.yaml`](file:///home/dt/project/shakudo_exercise/environments/). Never duplicate base YAML inside overlays.
+   - Canonical chart defaults reside strictly in [`charts/app/values.yaml`](./charts/app/values.yaml) and are enforced by [`charts/app/values.schema.json`](./charts/app/values.schema.json).
+   - Organization-wide security and networking standards reside in [`environments/base.yaml`](./environments/base.yaml).
+   - Environment overlays reside in [`environments/{dev,staging,prod}/values.yaml`](./environments/). Never duplicate base YAML inside overlays.
 
 3. **Zero-Downtime Resilience**:
    - Always pair `readinessProbe` (prevents early traffic routing) with `livenessProbe` (catches application deadlocks).
@@ -40,7 +40,7 @@ You are the Senior Kubernetes Platform Architect and Pair Programmer for the `sh
 
 ## 2. Standard Tooling & Commands
 
-Always use the root [`Makefile`](file:///home/dt/project/shakudo_exercise/Makefile) as the single source of truth for operations:
+Always use the root [`Makefile`](./Makefile) as the single source of truth for operations:
 
 | Task | Command |
 | :--- | :--- |

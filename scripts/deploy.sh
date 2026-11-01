@@ -31,7 +31,7 @@ helm upgrade "${RELEASE_NAME}" "${CHART_DIR}" \
   --create-namespace \
   -f "${ENV_DIR}/base.yaml" \
   -f "${ENV_DIR}/${ENV}/values.yaml" \
-  "${EXTRA_VALUES[@]}" \
+  ${EXTRA_VALUES[@]+"${EXTRA_VALUES[@]}"} \
   --wait \
   --timeout 300s \
   --atomic \

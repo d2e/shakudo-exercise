@@ -27,7 +27,7 @@ This document serves as your scripted presentation guide for the 30-minute recor
 
 ### Talking Points & Highlights:
 1. **Directory Taxonomy (`charts/` vs `environments/`)**:
-   * Show [`README.md`](file:///home/dt/project/shakudo_exercise/README.md) and [`docs/architecture.md`](file:///home/dt/project/shakudo_exercise/docs/architecture.md).
+   * Show [`README.md`](../README.md) and [`docs/architecture.md`](./architecture.md).
    * Explain how `charts/app/values.yaml` acts as the canonical schema contract (validated by `values.schema.json`), while `environments/base.yaml` enforces platform-wide invariants, and `environments/{dev,staging,prod}/values.yaml` supply environment deltas.
 
 2. **Pod Security Standard (PSS) Restricted Profile**:

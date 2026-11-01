@@ -85,7 +85,28 @@ To eliminate duplicate YAML and avoid configuration drift:
 
 ## 3. Operational Commands (Developer Runbook)
 
-All workflows are abstracted via the root [`Makefile`](file:///home/dt/project/shakudo_exercise/Makefile):
+All workflows are abstracted via the root [`Makefile`](./Makefile):
+
+### Prerequisites
+- **Kubernetes**: 1.28+ cluster (`k3s`, `minikube`, or cloud-managed EKS/GKE/AKS)
+- **Helm**: v3.10+
+- **kubectl**: Matching cluster minor version
+- **Tooling**: GNU `make`, `bash` 4+
+
+### Quick Start
+```bash
+# 1. Validate chart syntax and all environment overlays
+make lint
+
+# 2. Deploy to local dev environment
+make deploy-dev
+
+# 3. Verify health via integration tests
+make test-dev
+
+# 4. Check running pods and services
+make status-dev
+```
 
 ### Validation & Dry-Run
 ```bash

@@ -6,11 +6,11 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CHART_DIR="${ROOT_DIR}/charts/app"
 ENV_DIR="${ROOT_DIR}/environments"
 
-echo "=== [1/4] Linting Chart with default values ==="
-helm lint "${CHART_DIR}"
+echo "=== [1/2] Linting Chart with default values (strict mode) ==="
+helm lint "${CHART_DIR}" --strict
 
 for env in dev staging prod; do
-  echo "=== [2/4] Validating environment overlay: ${env} ==="
+  echo "=== [2/2] Validating environment overlay: ${env} ==="
   helm template test-lint "${CHART_DIR}" \
     -f "${ENV_DIR}/base.yaml" \
     -f "${ENV_DIR}/${env}/values.yaml" > /dev/null

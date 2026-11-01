@@ -47,6 +47,9 @@ securityContext:
   runAsNonRoot: true
   runAsUser: 101
 
+# -- Container port that the application listens on
+containerPort: 80
+
 # -- Service configuration
 service:
   type: ClusterIP
