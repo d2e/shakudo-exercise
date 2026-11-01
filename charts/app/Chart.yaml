@@ -1,0 +1,13 @@
+apiVersion: v2
+name: app
+description: Production-grade Helm chart with PSS-restricted security, multi-environment overlays, and self-healing probes.
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - enterprise
+  - microservice
+  - kubernetes
+maintainers:
+  - name: Platform Engineering
+    email: platform-eng@example.com

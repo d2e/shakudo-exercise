@@ -1,0 +1,12 @@
+# Kubernetes & Helm Artifacts
+*.tgz
+*.lock
+.DS_Store
+
+# Secret values (NEVER commit plain secrets)
+environments/**/secrets.yaml
+!environments/**/secrets.example.yaml
+
+# Temporary rendering outputs
+tmp/
+*.tmp

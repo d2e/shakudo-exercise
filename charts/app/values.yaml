@@ -1,0 +1,193 @@
+# Default values for the application chart.
+# This follows the Kubernetes Pod Security Standard (PSS) 'restricted' profile.
+
+# -- Number of replica pods to run (when autoscaling is disabled)
+replicaCount: 2
+
+image:
+  # -- Container image repository
+  repository: nginx
+  # -- Container image pull policy
+  pullPolicy: IfNotPresent
+  # -- Overrides the image tag whose default is the chart appVersion.
+  tag: "1.27-alpine"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+partOf: "platform-services"
+extraLabels: {}
+
+serviceAccount:
+  # -- Specifies whether a service account should be created
+  create: true
+  # -- Annotations to add to the service account
+  annotations: {}
+  # -- The name of the service account to use.
+  name: ""
+  # -- Disable automounting service account token by default for least privilege
+  automountServiceAccountToken: false
+
+# -- Pod-level security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101 # nginx in alpine
+  runAsGroup: 101
+  fsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+
+# -- Container-level security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+  runAsUser: 101
+
+# -- Service configuration
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: http
+  annotations: {}
+
+# -- Ingress configuration
+ingress:
+  enabled: false
+  className: "traefik"
+  annotations: {}
+  hosts:
+    - host: app.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# -- Compute resources requests and limits
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# -- Probes configuration
+probes:
+  startup:
+    enabled: false
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 10
+  liveness:
+    enabled: true
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 2
+
+# -- Rolling update deployment strategy
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 0
+
+# -- Graceful shutdown period
+terminationGracePeriodSeconds: 30
+
+# -- Horizontal Pod Autoscaler configuration
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# -- Pod Disruption Budget configuration
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+  # maxUnavailable: 1
+
+# -- NetworkPolicy configuration (least privilege)
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+
+# -- Static application environment variables
+env:
+  - name: APP_ENV
+    value: "production"
+  - name: LOG_LEVEL
+    value: "info"
+
+# -- Environment variables loaded from external ConfigMaps/Secrets
+envFrom: []
+
+# -- Application configuration injected as a ConfigMap mounted into the container
+config:
+  enabled: false
+  mountPath: /etc/app/config
+  data:
+    app-config.json: |
+      {
+        "service": "app",
+        "features": {
+          "telemetry": true
+        }
+      }
+
+# -- Application secrets injected as a Secret mounted or env-sourced
+secretData:
+  enabled: false
+  data: {}
+
+# -- Additional volume mounts (e.g. tmpfs for readOnlyRootFilesystem writable dirs)
+volumeMounts:
+  - name: tmp
+    mountPath: /tmp
+  - name: var-cache
+    mountPath: /var/cache/nginx
+  - name: var-run
+    mountPath: /var/run
+
+# -- Additional volumes definition
+volumes:
+  - name: tmp
+    emptyDir: {}
+  - name: var-cache
+    emptyDir: {}
+  - name: var-run
+    emptyDir: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

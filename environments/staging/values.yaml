@@ -1,0 +1,38 @@
+# Staging environment overlay
+replicaCount: 2
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+env:
+  - name: APP_ENV
+    value: "staging"
+  - name: LOG_LEVEL
+    value: "info"
+
+ingress:
+  enabled: true
+  className: "traefik"
+  hosts:
+    - host: app.staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 75
+
+networkPolicy:
+  enabled: true
