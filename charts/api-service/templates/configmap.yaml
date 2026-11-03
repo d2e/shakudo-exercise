@@ -10,8 +10,10 @@ data:
   ALLOWED_NAMESPACES: {{ join "," . | quote }}
   {{- end }}
   {{- if include "api-service.secretName" . }}
+  {{- if eq (toString .Values.config.env.MOCK_AUTH_ENABLED) "true" }}
   {{- with .Values.secrets.bootstrapSecretKey }}
   BOOTSTRAP_SECRET_FILE: {{ printf "%s/%s" $.Values.secrets.mountPath . | quote }}
+  {{- end }}
   {{- end }}
   {{- with .Values.secrets.signingKey }}
   SIGNING_KEY_FILE: {{ printf "%s/%s" $.Values.secrets.mountPath . | quote }}

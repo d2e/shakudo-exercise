@@ -7,7 +7,7 @@ CHARTS := $(sort $(notdir $(patsubst %/,%,$(dir $(wildcard charts/*/Chart.yaml))
 C := $(or $(CHART),app)
 
 .PHONY: help lint render-dev render-staging render-prod render-all \
-        build-image build-api-image load-api-image test-unit test-api-unit test-integration openapi test-dev test-staging test-prod test-e2e test-all \
+        build-image build-api-image load-api-image test-unit test-api-unit test-cli test-integration openapi test-dev test-staging test-prod test-e2e test-all \
         deploy-dev deploy-staging deploy-prod \
         status-dev status-staging status-prod \
         clean-dev clean-staging clean-prod
@@ -53,6 +53,9 @@ test-unit: ## Run pytest unit test suite for OIDC, JWT, and Kubernetes services
 
 test-api-unit: ## Run control-plane API unit tests (fake cluster, no network)
 	@cd control-plane/api-service && ../../.venv/bin/pytest -q
+
+test-cli: ## Run the deploy CLI tests (fake API, no cluster)
+	@cd control-plane/cli && ../../.venv/bin/pytest -q
 
 test-integration: ## Run control-plane API integration tests against the local cluster (needs kubectl context)
 	@cd control-plane/api-service && ../../.venv/bin/pytest -q -m integration -p no:cacheprovider test/integration

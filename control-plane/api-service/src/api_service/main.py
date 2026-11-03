@@ -30,7 +30,7 @@ def main() -> int:
     state = RuntimeState()
     app = create_app(settings, state=state)
     config = uvicorn.Config(app, host=settings.host, port=settings.port, log_config=None,
-                            timeout_graceful_shutdown=25)
+                            timeout_graceful_shutdown=25, ws_ping_interval=20, ws_ping_timeout=20)  # LG15
     _Server(config, state).run()
     return 0
 

@@ -4,6 +4,17 @@
   "type": "object",
   "additionalProperties": false,
   "required": ["replicaCount", "image", "service", "resources", "config"],
+  "if": {
+    "required": ["config"],
+    "properties": { "config": { "properties": { "env": { "required": ["ENVIRONMENT"], "properties": { "ENVIRONMENT": { "const": "dev" } } } } } }
+  },
+  "else": {
+    "$comment": "Outside dev a signing key must come from a Secret (existingSecret) or, for local use, from secretData (LG4, K1)",
+    "anyOf": [
+      { "required": ["secrets"], "properties": { "secrets": { "required": ["existingSecret"], "properties": { "existingSecret": { "minLength": 1 } } } } },
+      { "required": ["secretData"], "properties": { "secretData": { "required": ["enabled"], "properties": { "enabled": { "const": true } } } } }
+    ]
+  },
   "properties": {
     "replicaCount": { "type": "integer", "minimum": 1 },
     "image": {

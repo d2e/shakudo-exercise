@@ -42,6 +42,11 @@ class Settings(BaseModel):
     max_replicas: int = 20
     max_cpu_limit: str = "2"
     max_memory_limit: str = "2Gi"
+    # log streaming (D28): ticket lifetime, streams per user (R21), buffer and send limits (LG13)
+    log_ticket_ttl_seconds: int = 30
+    max_log_streams_per_user: int = 3
+    log_queue_max_lines: int = 1000
+    log_send_timeout_seconds: int = 5
     # applied when create omits `resources` (D31); must satisfy V14 and the R19 caps
     default_cpu_request: str = "50m"
     default_memory_request: str = "64Mi"
@@ -88,8 +93,10 @@ def validate_settings(s: Settings) -> list[str]:
             errors.append("BOOTSTRAP_SECRET_FILE: required when MOCK_AUTH_ENABLED is true")
         elif not _readable(s.bootstrap_secret_file):
             errors.append("BOOTSTRAP_SECRET_FILE: file does not exist or is not readable")
-        if s.environment != DEV and not s.signing_key_file:
-            errors.append("SIGNING_KEY_FILE: required outside dev")
+    # Outside dev the key is always needed, with a real identity provider too: log tickets (LG4) are signed with it, and
+    # a temporary per-replica key would make a ticket valid only on the replica that issued it.
+    if s.environment != DEV and not s.signing_key_file:
+        errors.append("SIGNING_KEY_FILE: required outside dev")
     if s.signing_key_file and not _readable(s.signing_key_file):
         errors.append("SIGNING_KEY_FILE: file does not exist or is not readable")
     if not 0 < s.access_token_ttl_seconds <= 300:
@@ -103,6 +110,10 @@ def validate_settings(s: Settings) -> list[str]:
         ("RATE_LIMIT_AUTH_PER_MINUTE", s.rate_limit_auth_per_minute),
         ("RATE_LIMIT_MUTATE_PER_MINUTE", s.rate_limit_mutate_per_minute),
         ("RATE_LIMIT_READ_PER_MINUTE", s.rate_limit_read_per_minute),
+        ("LOG_TICKET_TTL_SECONDS", s.log_ticket_ttl_seconds),
+        ("MAX_LOG_STREAMS_PER_USER", s.max_log_streams_per_user),
+        ("LOG_QUEUE_MAX_LINES", s.log_queue_max_lines),
+        ("LOG_SEND_TIMEOUT_SECONDS", s.log_send_timeout_seconds),
     ):
         if value <= 0:
             errors.append(f"{name}: must be greater than 0")
@@ -196,6 +207,10 @@ _ENV_FIELDS = {
     "MAX_REPLICAS": ("max_replicas", _int),
     "MAX_CPU_LIMIT": ("max_cpu_limit", str),
     "MAX_MEMORY_LIMIT": ("max_memory_limit", str),
+    "LOG_TICKET_TTL_SECONDS": ("log_ticket_ttl_seconds", _int),
+    "MAX_LOG_STREAMS_PER_USER": ("max_log_streams_per_user", _int),
+    "LOG_QUEUE_MAX_LINES": ("log_queue_max_lines", _int),
+    "LOG_SEND_TIMEOUT_SECONDS": ("log_send_timeout_seconds", _int),
     "DEFAULT_CPU_REQUEST": ("default_cpu_request", str),
     "DEFAULT_MEMORY_REQUEST": ("default_memory_request", str),
     "DEFAULT_CPU_LIMIT": ("default_cpu_limit", str),

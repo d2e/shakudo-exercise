@@ -173,12 +173,15 @@ config:
 
 # -- The control plane's own secrets, mounted read-only as files (K1). Only paths reach the environment.
 secrets:
-  # -- Name of an existing Secret (External Secrets Operator, Vault, SOPS). Empty: use secretData below, or mount nothing.
-  existingSecret: ""
+  # -- Name of an existing Secret (External Secrets Operator, Vault, SOPS) holding `signingKey` (and `bootstrapSecretKey` in dev).
+  # Outside dev it is required: log tickets (LG4) are signed with that key, and a temporary per-replica key would make a
+  # ticket valid only on the replica that issued it. If the Secret is missing the pods wait for it, they never start without a key.
+  # Dev overlays set this to "" and use secretData (local only). An existingSecret wins over secretData.
+  existingSecret: "api-service-secrets"
   mountPath: /var/run/api-secrets
   # -- Secret key holding the token-minting bootstrap secret (BOOTSTRAP_SECRET_FILE). Needed only with mock identity.
   bootstrapSecretKey: bootstrap-secret
-  # -- Secret key holding the PEM signing key (SIGNING_KEY_FILE)
+  # -- Secret key holding the PEM signing key (SIGNING_KEY_FILE): identity tokens in dev, log tickets everywhere
   signingKey: signing-key
 
 # -- Chart-created Secret for local use only. Never commit real values; see environments/<env>/api-service.secrets.example.yaml.

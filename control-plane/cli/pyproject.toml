@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "deploy-cli"
+version = "0.1.0"
+description = "Command line client for the control-plane deployment API"
+requires-python = ">=3.12"
+dependencies = ["requests==2.34.2", "websocket-client==1.9.2"]
+
+[project.scripts]
+deploy = "deploy_cli.main:run"
+
+[tool.setuptools.packages.find]
+where = ["src"]

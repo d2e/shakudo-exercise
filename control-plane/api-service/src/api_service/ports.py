@@ -10,9 +10,9 @@ Contract every adapter must keep:
   cluster text, hostnames or RBAC details (R24).
 - Results are managed deployments only (D2) and live data only.
 """
-from typing import Optional, Protocol, runtime_checkable
+from typing import Iterator, Optional, Protocol, runtime_checkable
 
-from .domain import DeploymentSnap, PodSnap
+from .domain import DeploymentSnap, LogLine, PodSnap
 
 FAILURE_KINDS = ("not_found", "conflict", "unreachable", "forbidden", "other")
 
@@ -23,6 +23,16 @@ class KubeFailure(Exception):
     def __init__(self, kind: str):
         super().__init__(kind)
         self.kind = kind
+
+
+@runtime_checkable
+class LogStream(Protocol):
+    """A followed pod log. Iterating yields lines until the pod's log ends or the stream is closed."""
+
+    def __iter__(self) -> Iterator[LogLine]: ...
+
+    def close(self) -> None:
+        """Safe to call from another thread, and must unblock a reader that is waiting for a line."""
 
 
 @runtime_checkable
@@ -61,3 +71,9 @@ class ClusterPort(Protocol):
     def patch_deployment(self, namespace: str, name: str, body: dict) -> DeploymentSnap: ...
 
     def delete_deployment(self, namespace: str, name: str) -> None: ...
+
+    # ---- logs (D28) ----
+    def stream_pod_logs(self, namespace: str, pod: str, tail_lines: Optional[int] = None,
+                        since_time: Optional[str] = None) -> LogStream:
+        """Follow one pod's log, newest `tail_lines` first. With `since_time` (RFC 3339) only lines strictly
+        after it are yielded. Raises KubeFailure when opening, or while iterating."""

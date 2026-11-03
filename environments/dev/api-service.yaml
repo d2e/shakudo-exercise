@@ -2,6 +2,13 @@
 # Needs environments/dev/api-service.secrets.yaml (gitignored; see the .example file) for the mock identity secrets.
 replicaCount: 1
 
+# Built and imported locally (make load-api-image builds 1.0.0; 1.1.0 adds log streaming, D28)
+image:
+  tag: "1.1.0"
+
+secrets:
+  existingSecret: ""  # dev uses secretData from the secrets file, not an external Secret
+
 config:
   env:
     ENVIRONMENT: "dev"

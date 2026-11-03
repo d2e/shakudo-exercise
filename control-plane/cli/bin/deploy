@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Run the deploy CLI from source: no install, no change to any virtualenv.
+#   control-plane/cli/bin/deploy --help         (or put this directory on PATH: see ../enable-cli.sh)
+# Python: $DEPLOY_PYTHON, else the repository's .venv, else python3 on PATH.
+set -euo pipefail
+
+self="$(readlink -f "${BASH_SOURCE[0]}")"
+cli_dir="$(cd "$(dirname "$self")/.." && pwd)"          # control-plane/cli
+repo_dir="$(cd "$cli_dir/../.." && pwd)"
+
+py="${DEPLOY_PYTHON:-$repo_dir/.venv/bin/python}"
+[[ -x "$py" ]] || py="$(command -v python3 || true)"
+[[ -n "$py" ]] || { echo "deploy: no Python found (set DEPLOY_PYTHON)" >&2; exit 2; }
+
+# Server: $DEPLOY_SERVER or --server win; otherwise the address saved by ./cli.sh.
+if [[ -z "${DEPLOY_SERVER:-}" ]]; then
+  server_file="${XDG_CONFIG_HOME:-$HOME/.config}/deploy/server"
+  [[ -s "$server_file" ]] && export DEPLOY_SERVER="$(<"$server_file")"
+fi
+
+export PYTHONPATH="$cli_dir/src${PYTHONPATH:+:$PYTHONPATH}"
+exec "$py" -m deploy_cli "$@"

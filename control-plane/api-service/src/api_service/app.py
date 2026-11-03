@@ -9,11 +9,13 @@ from fastapi.openapi.utils import get_openapi
 
 from . import __version__
 from .auth.jwks_cache import JwksCache
-from .controllers import build_auth_controller, build_deployments_controller, build_probes_controller
+from .controllers import (build_auth_controller, build_deployments_controller, build_logs_controller,
+                          build_probes_controller)
 from .auth.tokens import RemoteJwksFetcher, TokenService, load_signing_key, public_jwks
 from .config import Settings
 from .errors import install_error_handlers
 from .kube import KubernetesAdapter
+from .log_service import LogService, StreamRegistry
 from .ports import ClusterPort
 from .ratelimit import RateLimiter
 from .security import PUBLIC_PATHS, install_security
@@ -35,7 +37,8 @@ def _build_tokens(settings: Settings):
         cache = JwksCache(lambda: public_jwks(key, kid), ttl, cooldown, stale)  # local keys: no network
         return TokenService(settings, cache, key, kid), key, kid
     cache = JwksCache(RemoteJwksFetcher(settings), ttl, cooldown, stale)
-    return TokenService(settings, cache), None, None
+    ticket_key, ticket_kid = load_signing_key(settings)  # the IdP's key is not ours, so tickets need their own (LG4)
+    return TokenService(settings, cache, ticket_key=ticket_key, ticket_kid=ticket_kid), None, None
 
 
 def _install_openapi(app: FastAPI) -> None:
@@ -82,9 +85,14 @@ def create_app(settings: Settings, gateway: Optional[ClusterPort] = None, state:
                            allow_headers=["Authorization", "Content-Type"])
 
     app.include_router(build_probes_controller(gateway, state))
-    app.include_router(build_deployments_controller(DeploymentService(settings, gateway)))
+    deployments = DeploymentService(settings, gateway)
+    registry = StreamRegistry(settings.max_log_streams_per_user)
+    app.include_router(build_deployments_controller(deployments))
+    app.include_router(build_logs_controller(LogService(settings, gateway, tokens, deployments, registry),
+                                             state, settings, gateway))
     if settings.mock_auth_enabled:
         app.include_router(build_auth_controller(settings, tokens, key, kid))
     app.state.runtime, app.state.tokens, app.state.gateway = state, tokens, gateway
+    app.state.log_registry = registry
     _install_openapi(app)
     return app

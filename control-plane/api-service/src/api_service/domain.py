@@ -1,6 +1,32 @@
 """Plain data snapshots of cluster state. Decouples health logic and the API from Kubernetes types."""
+import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Optional
+
+_RFC3339 = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?(Z|[+-]\d{2}:\d{2})$")
+
+
+def log_time_key(ts: Optional[str]) -> Optional[tuple[float, int]]:
+    """Orderable key for an RFC 3339 time with up to nanoseconds, or None when it is not one.
+
+    Kubernetes trims trailing zeros from log timestamps, so strings cannot be compared as text.
+    """
+    m = _RFC3339.match(ts or "")
+    if not m:
+        return None
+    try:
+        base = datetime.fromisoformat(m.group(1) + ("+00:00" if m.group(3) == "Z" else m.group(3)))
+    except ValueError:
+        return None
+    return base.timestamp(), int(m.group(2).ljust(9, "0")) if m.group(2) else 0
+
+
+@dataclass
+class LogLine:
+    """One log line with the time Kubernetes recorded for it (RFC 3339, may be empty if unknown)."""
+    time: str
+    line: str
 
 
 @dataclass

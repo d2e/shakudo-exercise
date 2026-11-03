@@ -31,3 +31,30 @@ def test_empty_allowlist_by_default(secret):
 def test_invalid_settings_fail_fast(secret, env, fragment):
     with pytest.raises(ConfigError, match=fragment):
         load_settings({"BOOTSTRAP_SECRET_FILE": secret, **env})
+
+
+# ---- the signing key outside dev, with or without mock identity (LG4, K1) ----
+def real_idp(**extra):
+    return {"ENVIRONMENT": "prod", "MOCK_AUTH_ENABLED": "false", "ALLOWED_REGISTRIES": "registry.example.com",
+            "OIDC_ISSUER": "https://auth.example.com", **extra}
+
+
+def test_a_real_identity_provider_outside_dev_still_needs_a_signing_key():
+    with pytest.raises(ConfigError, match="SIGNING_KEY_FILE: required outside dev"):
+        load_settings(real_idp())
+
+
+def test_a_real_identity_provider_with_a_signing_key_is_accepted(tmp_path):
+    key = tmp_path / "signing-key"
+    key.write_text("x")
+    s = load_settings(real_idp(SIGNING_KEY_FILE=str(key)))
+    assert s.environment == "prod" and s.signing_key_file == str(key)
+
+
+def test_a_missing_signing_key_file_is_reported(tmp_path):
+    with pytest.raises(ConfigError, match="SIGNING_KEY_FILE: file does not exist"):
+        load_settings(real_idp(SIGNING_KEY_FILE=str(tmp_path / "nope")))
+
+
+def test_dev_still_works_without_a_signing_key(secret):
+    assert load_settings({"BOOTSTRAP_SECRET_FILE": secret}).signing_key_file == ""

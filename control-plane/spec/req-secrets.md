@@ -12,7 +12,7 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only.
 
 | # | Requirement |
 | :-- | :--- |
-| K1 | Secret material (the mock identity signing key, the token-minting bootstrap secret (R1), and any client or credential secret) is stored in a **Kubernetes Secret** and mounted into the pod as a **read-only file**. The environment holds only the file path, never the value. |
+| K1 | Secret material (the mock identity signing key, the token-minting bootstrap secret (R1), and any client or credential secret) is stored in a **Kubernetes Secret** and mounted into the pod as a **read-only file**. The environment holds only the file path, never the value. Outside dev the signing key is always required, whether or not the mock identity is on, because it also signs log tickets ([req-logs.md](./req-logs.md), LG4): startup fails without it, and the chart mounts it from a Secret. |
 | K2 | Nothing secret is baked into the image, the chart values, `environments/*`, or the repository. |
 | K3 | Only placeholders are committed (`secrets.example.yaml`, per `AGENTS.md`). Real values are supplied at deploy time or by an external secret manager (External Secrets Operator, Vault, SOPS). |
 | K4 | **Superseded by R14.** The kubelet mounts the API's own Secrets, so those need no permission. But checking an allow label on workload Secrets (R12) needs `get` on `secrets`, granted only by Roles in allowlisted namespaces. |

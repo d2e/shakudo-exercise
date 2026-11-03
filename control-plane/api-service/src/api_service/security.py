@@ -25,6 +25,8 @@ PUBLIC_PATHS = frozenset({
     "/api/v1/auth/token", "/api/v1/auth/refresh",
     "/.well-known/openid-configuration", "/.well-known/jwks.json",
 })
+# WebSocket routes the HTTP middleware never sees. Each one must validate a ticket before accepting (A3, LG7, LT9).
+TICKET_AUTH_PATHS = frozenset({"/api/v1/logs/stream"})
 DOC_PATHS = frozenset({"/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"})
 RATE_LIMITED_AUTH_PATHS = frozenset({"/api/v1/auth/token", "/api/v1/auth/refresh"})
 MUTATING = frozenset({"POST", "PATCH", "PUT", "DELETE"})

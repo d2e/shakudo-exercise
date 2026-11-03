@@ -7,6 +7,7 @@ import base64
 import hashlib
 import logging
 import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
@@ -35,6 +36,7 @@ class Principal:
     iss: str
     email: Optional[str] = None
     roles: list[str] = field(default_factory=list)
+    exp: int = 0  # expiry of the access token this principal came from (log streams end then, T8)
 
 
 def _b64(n: int) -> str:
@@ -75,8 +77,12 @@ class RemoteJwksFetcher:
 
 class TokenService:
     def __init__(self, settings: Settings, cache: JwksCache, private_key=None, kid: Optional[str] = None,
-                 clock: Callable[[], float] = time.time):
+                 clock: Callable[[], float] = time.time, ticket_key=None, ticket_kid: Optional[str] = None):
         self.settings, self.cache, self._private, self.kid, self._clock = settings, cache, private_key, kid, clock
+        # Log tickets are signed with the access-token key when this service mints tokens (mock identity).
+        # With a real provider that key is not ours, so tickets use the API's own key instead (LG4).
+        self._ticket_key = ticket_key or private_key
+        self._ticket_kid = ticket_kid or kid
 
     @property
     def can_mint(self) -> bool:
@@ -126,4 +132,36 @@ class TokenService:
         if claims.get("token_use") != use:
             raise AuthError("wrong token type")
         return Principal(sub=claims["sub"], iss=claims["iss"], email=claims.get("email"),
-                         roles=claims.get("roles") or [])
+                         roles=claims.get("roles") or [], exp=int(claims["exp"]))
+
+    # ---- log tickets (D28, LG4) ----
+    def mint_log_ticket(self, *, sub: str, uid: str, namespace: str, pod: Optional[str], tail_lines: int,
+                        since_time: Optional[str], stream_until: int, ttl: Optional[int] = None) -> tuple[str, int]:
+        """A short-lived ticket bound to one user, deployment and pod. It authorizes nothing else."""
+        now = int(self._clock())
+        ttl = self.settings.log_ticket_ttl_seconds if ttl is None else ttl
+        payload = {
+            "sub": sub, "iss": self.settings.oidc_issuer, "aud": self.settings.oidc_audience,
+            "iat": now, "nbf": now, "exp": now + ttl, "jti": uuid.uuid4().hex, "token_use": "log-ticket",
+            "uid": uid, "ns": namespace, "pod": pod, "tail": tail_lines, "since": since_time,
+            "stream_until": stream_until,
+        }
+        pem = self._ticket_key.private_bytes(
+            serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
+        return jwt.encode(payload, pem, algorithm="RS256", headers={"kid": self._ticket_kid}), ttl
+
+    def verify_log_ticket(self, token: str) -> dict:
+        """Claims of a valid ticket. Raises AuthError for anything else, including an access or refresh token (T6)."""
+        try:
+            if jwt.get_unverified_header(token).get("alg") != "RS256":
+                raise AuthError("unsupported signing algorithm")
+            claims = jwt.decode(token, self._ticket_key.public_key(), algorithms=["RS256"],
+                                audience=self.settings.oidc_audience, issuer=self.settings.oidc_issuer,
+                                leeway=2, options={"require": ["exp", "iss", "aud", "sub", "jti"]})
+        except ExpiredSignatureError:
+            raise AuthError("ticket expired", expired=True) from None
+        except PyJWTError:
+            raise AuthError() from None
+        if claims.get("token_use") != "log-ticket":
+            raise AuthError("wrong token type")
+        return claims

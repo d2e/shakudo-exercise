@@ -1,13 +1,46 @@
 """Unit-test helpers: a hand-written fake Kubernetes gateway (Q1), settings and snapshot builders."""
 import itertools
+import threading
 
 from api_service.builder import MANAGED_BY_VALUE
 from api_service.config import Settings
-from api_service.domain import ConditionSnap, ContainerSnap, DeploymentSnap, PodSnap
+from api_service.domain import ConditionSnap, ContainerSnap, DeploymentSnap, LogLine, PodSnap, log_time_key
 from api_service.ports import KubeFailure
 from api_service.validation import MANAGED_BY_LABEL
 
 BOOTSTRAP = "test-bootstrap-secret"
+
+
+def log_lines(*texts: str, start: int = 0) -> list[LogLine]:
+    """Scripted log lines with increasing one-second timestamps, so resuming from a time is testable."""
+    return [LogLine(time=f"2026-01-01T00:00:{(start + i) % 60:02d}Z", line=t) for i, t in enumerate(texts)]
+
+
+class FakeLogStream:
+    """A scripted pod log. After its lines it ends, fails with `failure`, or stays open until closed (keep_open)."""
+
+    def __init__(self, lines: list[LogLine], keep_open: bool, failure: str | None):
+        self._lines, self._keep_open, self._failure = lines, keep_open, failure
+        self._done = threading.Event()
+        self.closed = False
+
+    def __iter__(self):
+        for line in self._lines:
+            if self._done.is_set():
+                return
+            yield line
+        if self._failure:
+            raise KubeFailure(self._failure)
+        if self._keep_open:
+            self._done.wait()
+
+    def close(self):
+        self.closed = True
+        self._done.set()
+
+    def finish(self):
+        """The pod's log ends (Kubernetes closes the stream), without the client closing it."""
+        self._done.set()
 
 
 class FakeGateway:
@@ -22,6 +55,10 @@ class FakeGateway:
         self.pods: dict[str, list[PodSnap]] = {}
         self.empty = True
         self.fail: str | None = None  # a KubeFailure kind raised by every call
+        self.logs: dict[tuple, list[LogLine]] = {}  # (namespace, pod) -> scripted lines, see log_lines()
+        self.keep_open = False  # True: log streams stay open after their lines until closed or finish()ed
+        self.log_failure: str | None = None  # a KubeFailure kind raised after the scripted lines
+        self.log_streams: list[FakeLogStream] = []
         self._uids = (f"00000000-0000-4000-8000-{n:012d}" for n in itertools.count(1))
 
     def _enter(self, name: str):
@@ -100,6 +137,23 @@ class FakeGateway:
     def delete_deployment(self, namespace, name):
         self._enter("delete_deployment")
         self.deployments.pop((namespace, name))
+
+    def stream_pod_logs(self, namespace, pod, tail_lines=None, since_time=None):
+        self._enter("stream_pod_logs")
+        lines = list(self.logs.get((namespace, pod), []))
+        since = log_time_key(since_time) if since_time else None
+        if since is not None:  # strictly after, like the real adapter
+            lines = [x for x in lines if (log_time_key(x.time) or (0, 0)) > since]
+        if tail_lines is not None:
+            lines = lines[-tail_lines:]
+        stream = FakeLogStream(lines, self.keep_open, self.log_failure)
+        self.log_streams.append(stream)
+        return stream
+
+    def end_log_streams(self):
+        """Every open scripted stream ends, as when the pods are deleted."""
+        for s in self.log_streams:
+            s.finish()
 
 
 def make_settings(**over) -> Settings:

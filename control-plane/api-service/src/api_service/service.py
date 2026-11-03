@@ -153,6 +153,10 @@ class DeploymentService:
             raise ApiError(404, "not_found", "deployment not found")
         return snap
 
+    def find(self, uid: str) -> DeploymentSnap:
+        """The managed deployment in an allowed namespace, or 400, 404 or 500 (same rules as get)."""
+        return self._find(uid)
+
     def get(self, uid: str) -> DeploymentDetailOut:
         snap = self._find(uid)
         try:

@@ -30,7 +30,7 @@ def _imports(path: Path) -> list[tuple[str, int]]:
 
 
 def test_port_lists_the_operations_the_service_uses():
-    assert "ping" in PORT_METHODS and "create_deployment" in PORT_METHODS and len(PORT_METHODS) == 12
+    assert "ping" in PORT_METHODS and "create_deployment" in PORT_METHODS and "stream_pod_logs" in PORT_METHODS and len(PORT_METHODS) == 13
 
 
 @pytest.mark.parametrize("adapter", [KubernetesAdapter, FakeGateway], ids=["kubernetes", "fake"])

@@ -4,6 +4,8 @@ Part of the spec set indexed in [`req.md`](./req.md) (Part 3). Requirements only
 
 The CLI is a thin client over the API in [req-api.md](./req-api.md). It uses HTTP only and adds no behaviour the API lacks (U6).
 
+**Status:** built in [`../cli/`](../cli/README.md); `make test-cli` runs its tests.
+
 ## Decision
 
 | # | Decision |
@@ -91,7 +93,7 @@ Items marked **(proposed)** are defaults that were not in the original spec and 
 | # | Requirement |
 | :-- | :--- |
 | CL26 | `scale` needs `--replicas` (an integer, 0 or more). The server enforces the cap (R19). Scaling to **0** asks for confirmation like delete, since it stops the service. |
-| CL27 | **Delete confirmation.** The CLI first reads the deployment (`GET`) and asks: `Delete <name> in <namespace> (<uid>)? Its pods are removed, and an empty namespace the API created is removed too. [y/N]`. The default is no. `--yes` skips the prompt. With no terminal and no `--yes`, it exits 2 and sends no `DELETE`. |
+| CL27 | **Delete confirmation.** The CLI first reads the deployment (`GET`) and asks: `Delete <name> in <namespace> (<uid>)? Its pods are removed, and an empty namespace the API created is removed too. [y/N]`. The default is no. `--yes` skips the prompt. With no terminal and no `--yes`, it exits 2 and sends no request at all. Answering anything but `y` or `yes` prints "Aborted." and exits 1. |
 | CL28 | Delete is asynchronous (202). The CLI prints "deleting", not "deleted". |
 | CL29 | **`--wait` (proposed)** for `create`, `scale`, `restart` and `delete`: poll `GET` every 2 s, up to `--wait-timeout` (default 120 s). The first three end at `HEALTHY` (exit 0), or early at `FAILING` (exit 1). `delete` ends at 404. |
 
@@ -102,7 +104,7 @@ Items marked **(proposed)** are defaults that were not in the original spec and 
 | CL30 | **Flow (D28).** Request a ticket with the Bearer token, then open the WebSocket with the scheme swapped (`https` to `wss`, `http` to `ws`) and offer `logs.v1` and `ticket.<value>` as subprotocols. The ticket is never put in the URL. Frames are printed as received. Streams to stdout until interrupted; Ctrl-C closes the stream and exits 0. |
 | CL31 | `--pod` names one pod of the deployment, sent in the ticket request. The API checks ownership, so another deployment's pod is 404. Without `--pod`, all the deployment's pods are shown in one stream, each line prefixed `[pod-name]` (D30). |
 | CL32 | Options: `--tail N` (default 100, sent as `tailLines`) and `--since DURATION` (sent as `sinceTime`). |
-| CL33 | **Token expiry (T8).** The server closes the stream with code `4001` at the expiry of the token that requested the ticket. With a stored token the CLI refreshes, requests a new ticket with `sinceTime` set to the last received `time`, and reconnects, so lines are not repeated. With `DEPLOY_TOKEN` or `--token-file` it cannot refresh, so it prints a message and exits 3. Close code `1001` (server restarting) is handled the same way. |
+| CL33 | **Token expiry (T8).** The server closes the stream with code `4001` at the expiry of the token that requested the ticket. With a stored token the CLI refreshes, requests a new ticket with `sinceTime` set to the oldest per-pod position (tracked per pod, because lines from different pods arrive out of time order), and reconnects, so lines are not repeated. With `DEPLOY_TOKEN` or `--token-file` it cannot refresh, so it prints a message and exits 3. Close code `1001` (server restarting) is handled the same way. |
 | CL34 | A fourth concurrent stream for one user is refused with 429 at the ticket request, or at the upgrade (R21, LG11). The CLI shows that message and exits 1. Other close codes (`1013` too slow, `1011` cluster failure) print the fixed message and exit 1. |
 
 ## Build rules

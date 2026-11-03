@@ -377,6 +377,74 @@ paths:
           description: Internal Server Error
       security:
       - bearerAuth: []
+  /api/v1/deployments/{id}/logs/ticket:
+    post:
+      tags:
+      - Logs
+      summary: Get a short-lived ticket to open the log WebSocket
+      description: 'Authenticated with the Bearer token. The ticket is valid for 30
+        s and opens one stream
+
+        (`GET /api/v1/logs/stream`, WebSocket, subprotocols `logs.v1` and `ticket.<value>`).'
+      operationId: createLogTicket
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogTicketRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogTicketOut'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Not Found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Too Many Requests
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Internal Server Error
+      security:
+      - bearerAuth: []
   /api/v1/auth/token:
     post:
       tags:
@@ -906,6 +974,55 @@ components:
       - rule
       - message
       title: ErrorDetail
+    LogTicketOut:
+      properties:
+        ticket:
+          type: string
+          title: Ticket
+          description: Short-lived, single use. Offer it as the `ticket.<value>` subprotocol.
+        streamPath:
+          type: string
+          title: Streampath
+          description: WebSocket path; use the server address with the scheme swapped
+            (https to wss)
+        expiresIn:
+          type: integer
+          title: Expiresin
+          description: Seconds the ticket stays valid
+      type: object
+      required:
+      - ticket
+      - streamPath
+      - expiresIn
+      title: LogTicketOut
+    LogTicketRequest:
+      properties:
+        pod:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Pod
+          description: 'A pod of this deployment. Omitted: all its pods, merged (D30).'
+        tailLines:
+          type: integer
+          maximum: 1000.0
+          minimum: 1.0
+          title: Taillines
+          description: Lines to start from, newest first
+          default: 100
+        sinceTime:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sincetime
+          description: RFC 3339. Only lines strictly after this time.
+      additionalProperties: false
+      type: object
+      title: LogTicketRequest
+      examples:
+      - pod: http-echo-6d4cf56db6-abcde
+        sinceTime: '2026-11-03T12:00:00Z'
+        tailLines: 100
     PodOut:
       properties:
         name:

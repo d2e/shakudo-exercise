@@ -18,6 +18,8 @@ environments/**/*.secrets.yaml
 
 # Python artifacts
 __pycache__/
+*.egg-info/
+build/
 *.pyc
 .pytest_cache/
 

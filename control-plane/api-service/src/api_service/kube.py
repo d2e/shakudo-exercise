@@ -7,20 +7,22 @@ travels up. Every call goes to the API server; nothing is cached (N1-N3). The cl
 shared, which holds no cluster data (N5).
 """
 import logging
+import time
 import urllib3
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
 
 from .builder import (MANAGED_BY_VALUE, build_limit_range, build_namespace, build_resource_quota)
 from .config import Settings
-from .domain import ConditionSnap, ContainerSnap, DeploymentSnap, PodSnap
-from .ports import ClusterPort, KubeFailure
+from .domain import ConditionSnap, ContainerSnap, DeploymentSnap, LogLine, PodSnap, log_time_key
+from .ports import ClusterPort, KubeFailure, LogStream
 from .validation import MANAGED_BY_LABEL
 
 logger = logging.getLogger("api_service.kube")
+LOG_READ_TIMEOUT_SECONDS = 24 * 3600  # effectively no read timeout for followed logs
 
 MANAGED_SELECTOR = f"{MANAGED_BY_LABEL}={MANAGED_BY_VALUE}"
 # Kinds that must be absent before an API-created namespace is deleted (R11).
@@ -107,6 +109,51 @@ def to_pod_snap(p) -> PodSnap:
         restart_count=sum(c.restart_count for c in containers),
         containers=containers, terminating=p.metadata.deletion_timestamp is not None,
     )
+
+
+def parse_log_line(raw: bytes, since: Optional[tuple[float, int]]) -> Optional[LogLine]:
+    """One `timestamps=true` line: "<RFC 3339 time> <text>". Lines at or before `since` are dropped (resume, LT10)."""
+    text = raw.decode("utf-8", "replace").rstrip("\r")
+    ts, _, rest = text.partition(" ")
+    key = log_time_key(ts)
+    if key is None:  # no timestamp prefix: keep the whole text, time unknown
+        return LogLine(time="", line=text)
+    if since is not None and key <= since:
+        return None
+    return LogLine(time=ts, line=rest)
+
+
+class KubeLogStream(LogStream):
+    """A followed pod log over one HTTP response. close() may come from another thread (stream end, client gone)."""
+
+    def __init__(self, response, since: Optional[tuple[float, int]]):
+        self._resp, self._since, self._closed = response, since, False
+
+    def __iter__(self) -> Iterator[LogLine]:
+        buf = b""
+        try:
+            for chunk in self._resp.stream(8192):
+                buf += chunk
+                while (i := buf.find(b"\n")) != -1:
+                    raw, buf = buf[:i], buf[i + 1:]
+                    if (line := parse_log_line(raw, self._since)) is not None:
+                        yield line
+            if buf and (line := parse_log_line(buf, self._since)) is not None:
+                yield line
+        except Exception as e:  # noqa: BLE001 - classified, never propagated raw
+            if self._closed:  # the reader was cut off on purpose
+                return
+            raise (e if isinstance(e, KubeFailure) else classify(e)) from None
+        finally:
+            self.close()
+
+    def close(self) -> None:
+        self._closed = True
+        for name in ("shutdown", "close", "release_conn"):  # shutdown wakes a blocked reader
+            try:
+                getattr(self._resp, name)()
+            except Exception:  # noqa: BLE001 - best effort, may already be closed
+                pass
 
 
 class KubernetesAdapter(ClusterPort):
@@ -228,3 +275,21 @@ class KubernetesAdapter(ClusterPort):
 
     def delete_deployment(self, namespace: str, name: str) -> None:
         self._call(self._apps.delete_namespaced_deployment, name, namespace, propagation_policy="Foreground")
+
+    # ---- logs (D28) ----
+    def stream_pod_logs(self, namespace: str, pod: str, tail_lines: Optional[int] = None,
+                        since_time: Optional[str] = None) -> LogStream:
+        kwargs: dict = {"follow": True, "timestamps": True, "_preload_content": False}
+        if tail_lines is not None:
+            kwargs["tail_lines"] = tail_lines
+        since = log_time_key(since_time) if since_time else None
+        if since is not None:  # the client only offers whole seconds; the exact cut is made in parse_log_line
+            kwargs["since_seconds"] = max(1, int(time.time() - since[0]) + 1)
+        try:
+            # A quiet log must not end the stream, so the read timeout is very long. It cannot be None: the client
+            # validates _request_timeout and rejects None (found by a live test). Streams end at token expiry anyway.
+            resp = self._core.read_namespaced_pod_log(pod, namespace, _request_timeout=(self._timeout, LOG_READ_TIMEOUT_SECONDS),
+                                                      **kwargs)
+        except Exception as e:  # noqa: BLE001
+            raise classify(e) from None
+        return KubeLogStream(resp, since)

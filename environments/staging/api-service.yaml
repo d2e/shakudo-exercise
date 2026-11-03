@@ -9,6 +9,12 @@ config:
     OIDC_ISSUER: "https://auth.staging.example.com"
     ALLOWED_REGISTRIES: "registry.example.com"
 
+# The signing key for log tickets (LG4) comes from this Secret, provisioned by External Secrets Operator, Vault or SOPS
+# (K3). It must exist in the release namespace with the key `signing-key` (a PEM private key). No bootstrap secret here.
+secrets:
+  existingSecret: api-service-secrets
+  bootstrapSecretKey: ""
+
 allowedNamespaces:
   - staging-workloads
 
