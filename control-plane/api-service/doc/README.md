@@ -28,6 +28,10 @@ make openapi           # regenerate spec/openapi.yaml; a test fails if it is sta
 ENVIRONMENT=dev BOOTSTRAP_SECRET_FILE=/path/secret ALLOWED_NAMESPACES=demo python -m api_service.main   # from src/
 ```
 
+**Try it by hand:** [testing-the-api.md](./testing-the-api.md) walks through every endpoint with curl and example
+payloads (token, create, list, detail, scale, image update, restart, delete), the failure cases, the bad-image
+scenario, and how to confirm each result against the real cluster with `kubectl`.
+
 Settings are environment variables, see `config.py`. `ALLOWED_NAMESPACES` empty denies everything (R6).
 RBAC for the pod's ServiceAccount: [`charts/api-service/templates/rbac.yaml`](../../../charts/api-service/templates/rbac.yaml).
 

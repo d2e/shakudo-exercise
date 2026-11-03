@@ -123,6 +123,14 @@ make test-dev
 make status-dev
 ```
 
+### Control-plane API (`charts/api-service`)
+```bash
+make load-api-image && make deploy-dev CHART=api-service   # build, import into k3s, install the dev release
+make test-api-unit                                         # unit tests, fake cluster
+make test-integration                                      # live gate: every API call confirmed against the cluster
+```
+Hand-testing with curl and example payloads: [`control-plane/api-service/doc/testing-the-api.md`](./control-plane/api-service/doc/testing-the-api.md).
+
 ### Validation & Dry-Run
 ```bash
 # Lint the chart and validate all environment overlays (dev, staging, prod)
