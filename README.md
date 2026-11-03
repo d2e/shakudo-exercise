@@ -23,7 +23,8 @@ make test-integration                                     # live gate against a 
 make deploy-dev CHART=api-service && ./cli.sh             # deploy, then `deploy list`, `deploy logs <id>`, ...
 ```
 
-The rest of this README describes the surrounding chart and configuration framework (`charts/app` is an earlier service).
+The rest of this README describes the surrounding chart and configuration framework. `app/` and `charts/app` are an
+earlier service, **deprecated and marked for removal** (not part of the deliverable; see [`app/README.md`](./app/README.md)).
 
 ---
 
@@ -120,7 +121,7 @@ and a link to every file below. Each file states its rules with IDs that the cod
 │   ├── cli/                        # `deploy` CLI, tests, docs
 │   ├── docs/                       # Kubernetes API discovery and validation notes
 │   └── scripts/                    # OpenAPI export, discovery validation scripts
-├── app/                            # Earlier hardened Python microservice (OIDC + pod listing)
+├── app/                            # DEPRECATED, marked for removal: earlier OIDC + pod-listing service
 │   ├── main.py                     # FastAPI routes (/healthz, OIDC discovery, pod listing)
 │   ├── auth.py                     # OIDC discovery, JWKS management, JWT RS256 validation
 │   ├── k8s_client.py               # Kubernetes API client (scoped namespace listing)

@@ -18,7 +18,7 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only.
 | F1 | **FastAPI** on **Python 3.12** (matches the repo's virtual environment), served by uvicorn. |
 | F2 | **Pydantic models** define every request and response body. They are the single validation layer (V8) and the source of the OpenAPI schemas. |
 | F3 | **Kubernetes access** uses the official `kubernetes` Python client, inside the adapter (D27), as validated in [`../docs/python-client-coverage.md`](../docs/python-client-coverage.md). It is synchronous, so handlers that call it are plain `def` (run in FastAPI's threadpool), not `async def`. |
-| F4 | **Authentication** is one global dependency (A2), reusing the validation in `app/auth.py` with the fixes in [req-auth.md](./req-auth.md). |
+| F4 | **Authentication** is one global dependency (A2), modelled on the earlier `app/auth.py` (deprecated; the API has its own `auth/` package) with the fixes in [req-auth.md](./req-auth.md). |
 | F5 | **Observability** uses the OpenTelemetry Python SDK ([req-observability.md](./req-observability.md)). **Tests** use pytest ([req-tests.md](./req-tests.md)). |
 | F6 | **Dependencies are pinned** to exact versions in a requirements file, and the image tag is pinned (`AGENTS.md`). |
 | F7 | The CLI is also Python, in the same repository (assumption), and talks to the API only over HTTP (U6). |

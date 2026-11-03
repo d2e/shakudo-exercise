@@ -48,7 +48,7 @@ This file is about the **health of the control-plane API pod itself**, used by K
 
 ## Consequences
 
-- The existing `/readyz` in `app/main.py` returns a fixed "ready" and checks nothing. It must be replaced by the checks above.
+- The earlier service (`app/main.py`, deprecated) had a `/readyz` that returned a fixed "ready" and checked nothing. The API implements the checks above instead.
 - If the Kubernetes API is down, every pod becomes not ready and the API serves nothing. That is intended: it cannot do its job.
 
 ## Assumptions to confirm

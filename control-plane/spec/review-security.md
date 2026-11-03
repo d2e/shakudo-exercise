@@ -17,7 +17,7 @@ Read every spec file, traced each endpoint through the order of checks (authenti
 | High | Refresh tokens are stateless, not revocable, not single-use, 8 hours, on a public endpoint | `req-auth.md` T4–T6 | R4, R5: 1 hour, rate limited | Reduced, residual risk |
 | High | No rate limiting anywhere, and the UID lookup lists all deployments on every call | all | R18 | Specified |
 | Medium | No TLS requirement | all | D23: R15, R16 | Specified |
-| Medium | CORS `*` with credentials exists in `app/main.py` lines 31–32 | `req-ui.md` U9 | R17, tested in Q36 | Specified, code not yet fixed |
+| Medium | CORS `*` with credentials exists in `app/main.py` lines 31–32 | `req-ui.md` U9 | R17, tested in Q36 | Fixed in the API (CORS off by default, no wildcard); remains only in the deprecated `app/`, marked for removal |
 | Medium | No NetworkPolicy requirement | `req-observability.md` | R22 | Specified |
 | Medium | No resource caps and no registry allowlist | `req-validation.md` V12–V14 | R19, R20 | Specified |
 | Medium | A removed or compromised signing key stays trusted up to 10 minutes (and up to 1 hour stale during an outage) | `req-auth.md` N10–N12 | R27 | Accepted, documented |

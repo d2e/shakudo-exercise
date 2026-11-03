@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# DEPRECATED, marked for removal with app/ (see app/README.md): end-to-end test of the earlier service.
 import sys
 import subprocess
 import time

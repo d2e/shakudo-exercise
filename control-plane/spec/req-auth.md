@@ -6,7 +6,7 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only.
 
 | # | Decision |
 | :-- | :--- |
-| D3 | **JWT required** on every endpoint, reusing the OIDC validation in `app/auth.py`. 401 for a missing or invalid token. |
+| D3 | **JWT required** on every endpoint, modelled on the OIDC validation of the earlier `app/auth.py` (deprecated; the API has its own `auth/`). 401 for a missing or invalid token. |
 | D10 | **Mock identity provider** (the built-in one). `POST /api/v1/auth/token` mints a JWT, and requires a bootstrap secret (D20, [req-security.md](./req-security.md)). A real provider (Dex, Keycloak) is the documented production path, not built. |
 
 ## Authentication happens before the call (D17)

@@ -4,6 +4,8 @@ description: Production-grade Helm chart with PSS-restricted security, multi-env
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
+# Earlier service, marked for removal; see app/README.md. The assignment chart is charts/api-service.
+deprecated: true
 keywords:
   - enterprise
   - microservice
