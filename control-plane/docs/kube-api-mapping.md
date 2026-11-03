@@ -1,6 +1,6 @@
 # Kubernetes Call and Error Mapping
 
-How planned control-plane APIs ([api.md](../spec/api.md)) map to Kubernetes client calls.
+How the control-plane API operations ([req-api.md](../spec/req-api.md)) map to Kubernetes client calls. Written during discovery, before the endpoint set was final.
 
 ## Calls
 

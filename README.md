@@ -2,6 +2,76 @@
 
 A production-grade Kubernetes architecture framework designed to maintain Helm charts, multi-environment configurations, security baselines, and deployment automation.
 
+## Start here (reviewers)
+
+The assignment deliverable is the **control-plane deployment API**: a FastAPI service that creates and manages Kubernetes
+Deployments, a `deploy` CLI for it, a Helm chart, and tests that check every API action against the real cluster.
+
+| What | Where |
+| :--- | :--- |
+| Assignment text and requirements index | [`control-plane/spec/req.md`](./control-plane/spec/req.md) (decisions D1–D31, links to each `req-*.md`) |
+| API contract | [`control-plane/spec/openapi.yaml`](./control-plane/spec/openapi.yaml) (generated from code; a test fails if stale) |
+| API service | [`control-plane/api-service/`](./control-plane/api-service/doc/README.md) |
+| CLI | [`control-plane/cli/`](./control-plane/cli/README.md) |
+| Helm chart and overlays | [`charts/api-service/`](./charts/api-service/), `environments/*/api-service.yaml` |
+| Try it by hand | [curl guide](./control-plane/api-service/doc/testing-the-api.md), [CLI guide](./control-plane/cli/doc/testing-the-cli.md) |
+
+```bash
+make test-api-unit                                        # API unit tests (fake cluster, no network)
+cd control-plane/cli && ../../.venv/bin/pytest -q; cd -   # CLI unit tests
+make test-integration                                     # live gate against a k3s cluster
+make deploy-dev CHART=api-service && ./cli.sh             # deploy, then `deploy list`, `deploy logs <id>`, ...
+```
+
+The rest of this README describes the surrounding chart and configuration framework (`charts/app` is an earlier service).
+
+---
+
+## High-level architecture
+
+The control plane is a thin path from an operator's CLI to the Kubernetes API, with every safety rule enforced on the server:
+
+```text
+   OPERATOR                      CLUSTER
+ +------------+  HTTPS / WSS   +---------+     +-------------------------------------------+
+ | deploy CLI |--------------->| Traefik |---->| control-plane API  (FastAPI, N replicas)  |
+ |            |  Bearer token  | Ingress |     |                                           |
+ |  login     |  (logs: a      | sticky  |     |  1 pipeline    authenticate, limit, audit |
+ |  create    |   short-lived  | cookie  |     |  2 controllers -> services                |
+ |  list      |   ticket)      +---------+     |  3 validate input, namespace allowlist    |
+ |  status    |                                |  4 ClusterPort (interface)                |
+ |  scale     |                                |        |                                  |
+ |  restart   |                                |  KubernetesAdapter (the only SDK user)    |
+ |  delete    |                                +--------+----------------------------------+
+ |  logs      |                                         | ServiceAccount, least-privilege RBAC
+ +------------+                                +--------v---------+    +-------------------+
+                                               | Kubernetes API   |--->| Deployments,      |
+                                               +------------------+    | ReplicaSets, Pods |
+                                                                       | (managed by the   |
+                                                                       |  API only)        |
+                                                                       +-------------------+
+```
+
+- **Auth:** `deploy login` gets a short-lived token (dev identity provider); other environments validate tokens from a real
+  provider. Authentication runs before any validation or cluster call.
+- **Logs:** an authenticated `POST` returns a 30-second ticket, then the CLI opens a WebSocket with only that ticket
+  (the long-lived token never goes in a URL), with a limit of 3 open streams per user.
+- **Safety:** no cached cluster data, errors reduced to fixed messages, workloads always pod-security `restricted`,
+  and only deployments created through the API are visible or changeable.
+- **Testability:** the API reaches the cluster through one interface (`ClusterPort`), so the unit and end-to-end tests
+  replace only the cluster and exercise everything else for real.
+
+Configuration is layered, with the later layer winning, and secrets never enter git:
+
+```text
+ charts/<chart>/values.yaml --> environments/base.yaml --> environments/<env>/<chart>.yaml --> secrets
+ (defaults + JSON schema)       (organisation baseline)    (deltas only)                       (ESO / Vault / SOPS)
+         \______________  helm template / upgrade  (make lint | render-<env> | deploy-<env>)  ______________/
+```
+
+Full diagrams (components, one command, log streaming), where each rule is enforced, and a code map:
+[`control-plane/docs/architecture.md`](./control-plane/docs/architecture.md).
+
 ---
 
 ## 1. Directory Taxonomy & Architecture
@@ -13,7 +83,14 @@ A production-grade Kubernetes architecture framework designed to maintain Helm c
 ├── Dockerfile                      # Multi-stage PSS-restricted non-root container build
 ├── pytest.ini                      # Pytest discovery configuration
 ├── .gitignore                      # Git exclusion rules
-├── app/                            # Hardened Python microservice
+├── cli.sh                          # One-time setup for the `deploy` CLI (launcher, port-forward, login)
+├── control-plane/                  # The assignment: deployment API, CLI, specs (see "Start here")
+│   ├── spec/                       # Requirements (req.md index), reviews, openapi.yaml
+│   ├── api-service/                # FastAPI service, Dockerfile, tests, docs
+│   ├── cli/                        # `deploy` CLI, tests, docs
+│   ├── docs/                       # Kubernetes API discovery and validation notes
+│   └── scripts/                    # OpenAPI export, discovery validation scripts
+├── app/                            # Earlier hardened Python microservice (OIDC + pod listing)
 │   ├── main.py                     # FastAPI routes (/healthz, OIDC discovery, pod listing)
 │   ├── auth.py                     # OIDC discovery, JWKS management, JWT RS256 validation
 │   ├── k8s_client.py               # Kubernetes API client (scoped namespace listing)
@@ -129,6 +206,7 @@ make load-api-image && make deploy-dev CHART=api-service   # build, import into 
 make test-api-unit                                         # unit tests, fake cluster
 make test-integration                                      # live gate: every API call confirmed against the cluster
 ```
+CLI: run `./cli.sh` once, then `deploy --help` ([testing-the-cli.md](./control-plane/cli/doc/testing-the-cli.md)).
 Hand-testing with curl and example payloads: [`control-plane/api-service/doc/testing-the-api.md`](./control-plane/api-service/doc/testing-the-api.md).
 
 ### Validation & Dry-Run

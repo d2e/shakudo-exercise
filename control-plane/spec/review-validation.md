@@ -13,7 +13,7 @@ Review of `req.md` and the `req-*.md` files (decisions D1–D19) for contradicti
 | V-5 | D9 deletes only managed namespaces, but nothing required the label on create | `req-api.md`, `req-security.md` | R10 requires it | Fixed |
 | V-6 | Gaps: pagination, concurrent PATCH conflicts, request timeouts, idempotency of DELETE and restart | all | Listed as assumptions in `req-api.md` | Recorded |
 | V-7 | The rule-letter list in the index did not include the new category | `req.md` | `R` added, plus `D20`–`D23` | Fixed |
-| V-8 | Three superseded drafts remain untracked: `api.md`, `api-schema.md`, `api-decisions.md` | `control-plane/spec/` | Left alone, carrying a "Superseded" banner | Open |
+| V-8 | Three superseded drafts remain untracked: `api.md`, `api-schema.md`, `api-decisions.md` | `control-plane/spec/` | Left alone, carrying a "Superseded" banner | Removed during repository cleanup |
 | V-9 | A3 is default-deny, but P6 serves OpenAPI | `req-auth.md`, `req-api.md` | R23: dev only, or authenticated | Fixed |
 | V-10 | "Order of checks" (A1) had no authorization step | `req-auth.md` | A1 now: authenticate, validate, allowlist (403), cluster | Fixed |
 | V-11 | Refresh token life (T5, 8 hours) conflicted with the security fix | `req-auth.md` | 1 hour (R5) | Fixed |
@@ -29,6 +29,5 @@ Review of `req.md` and the `req-*.md` files (decisions D1–D19) for contradicti
 
 ## Still open (needs the owner)
 
-- V-8: delete the three superseded drafts, or keep them.
 - Numeric values chosen as assumptions (rate limits, caps, quota, 1-hour refresh).
 - ~~Whether auto-delete of namespaces (D9) is worth the read access R11 needs.~~ Decided: option A. Keep D9 as designed, accept that it is inert under the chart's least-privilege RBAC, and document it.
