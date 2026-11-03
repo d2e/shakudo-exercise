@@ -72,6 +72,36 @@ Configuration is layered, with the later layer winning, and secrets never enter 
 Full diagrams (components, one command, log streaming), where each rule is enforced, and a code map:
 [`control-plane/docs/architecture.md`](./control-plane/docs/architecture.md).
 
+### Sequence diagrams
+
+[`control-plane/docs/sequences.md`](./control-plane/docs/sequences.md) (Mermaid, rendered by GitHub): login and token
+refresh, an ordinary command through the pipeline, create with the order of its checks, delete with the background
+namespace cleanup, log streaming (ticket, then WebSocket, with reconnect at token expiry), and how errors are shaped.
+
+### Specs
+
+Start with the index, [`control-plane/spec/req.md`](./control-plane/spec/req.md): the assignment, all decisions (D1 to D31)
+and a link to every file below. Each file states its rules with IDs that the code, tests and diagrams refer to.
+
+| Spec | Covers |
+| :--- | :--- |
+| [`req-api.md`](./control-plane/spec/req-api.md) | endpoints, errors, the no-caching rule, RBAC impact |
+| [`req-validation.md`](./control-plane/spec/req-validation.md) | field rules, 400 behaviour, default resources |
+| [`req-status.md`](./control-plane/spec/req-status.md) | response fields and the health rules |
+| [`req-auth.md`](./control-plane/spec/req-auth.md) | JWT, mock identity, 5-minute tokens and refresh |
+| [`req-security.md`](./control-plane/spec/req-security.md) | token minting, namespace scope, Secret references, TLS, limits |
+| [`req-secrets.md`](./control-plane/spec/req-secrets.md) | Kubernetes Secrets, never environment values |
+| [`req-config.md`](./control-plane/spec/req-config.md) | settings, cluster connection modes |
+| [`req-logs.md`](./control-plane/spec/req-logs.md) | log streaming: ticket, WebSocket, limits, sticky sessions |
+| [`req-cli.md`](./control-plane/spec/req-cli.md) | the `deploy` CLI: commands, auth, behaviour, tests |
+| [`req-health.md`](./control-plane/spec/req-health.md) | liveness and readiness of the API pod |
+| [`req-observability.md`](./control-plane/spec/req-observability.md) | logs and metrics |
+| [`req-stack.md`](./control-plane/spec/req-stack.md) | FastAPI, OpenAPI contract, the cluster port and adapter, Helm packaging |
+| [`req-tests.md`](./control-plane/spec/req-tests.md) | unit and integration tests |
+| [`req-ui.md`](./control-plane/spec/req-ui.md) | the later web UI |
+| [`review-security.md`](./control-plane/spec/review-security.md), [`review-validation.md`](./control-plane/spec/review-validation.md) | reviews behind the security and consistency fixes |
+| [`openapi.yaml`](./control-plane/spec/openapi.yaml) | the generated API contract |
+
 ---
 
 ## 1. Directory Taxonomy & Architecture
