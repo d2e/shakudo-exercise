@@ -52,10 +52,10 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only. Finding
 
 | # | Requirement |
 | :-- | :--- |
-| R18 | **Rate limits**, per client and configurable: auth endpoints 10 per minute, mutating endpoints 30 per minute, reads 300 per minute (values are assumptions). Over the limit: 429 with `Retry-After`. The UID lookup (D1) lists all managed deployments, so this limit protects the cluster API. |
+| R18 | **Rate limits**, per client and configurable: auth endpoints 10 per minute, mutating endpoints 30 per minute, reads 300 per minute (values are assumptions). Over the limit: 429 with `Retry-After`. The UID lookup (D1) lists all managed deployments, so this limit protects the cluster API. Limits are counted per API replica; cookie session affinity (D29) keeps one client on one replica, so the effective limit stays close to the configured value. |
 | R19 | **Resource caps** (configurable): CPU limit up to 2 per container, memory limit up to 2 GiB, replicas up to 20 (replaces the open maximum in V12 and V14). |
 | R20 | `ALLOWED_REGISTRIES` lists permitted image registries. In staging and prod it must be set (schema enforced); in dev, empty allows any registry. |
-| R21 | Log streams: at most **3 concurrent per user**, each ending at token expiry (T8). |
+| R21 | Log streams: at most **3 concurrent per user** (counted per API replica, like R18), each ending at token expiry (T8). Rules: [req-logs.md](./req-logs.md) (LG11). |
 
 ## Network and exposure
 

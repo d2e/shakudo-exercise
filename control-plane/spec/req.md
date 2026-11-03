@@ -146,7 +146,8 @@ The assessment text above is the source requirement. Details are split by catego
 | API | [req-api.md](./req-api.md) | behaviour, errors, no-caching rule, RBAC impact |
 | Status | [req-status.md](./req-status.md) | response fields, health rules, test scenarios |
 | Auth | [req-auth.md](./req-auth.md) | JWT, mock identity, 5-minute tokens and refresh |
-| CLI | [req-cli.md](./req-cli.md) | commands, login, token handling |
+| Logs | [req-logs.md](./req-logs.md) | log streaming: HTTP-issued ticket, then WebSocket (not built) |
+| CLI | [req-cli.md](./req-cli.md) | the one CLI doc: commands, auth, behaviour, tests, open decisions |
 | UI (later) | [req-ui.md](./req-ui.md) | planned web UI, and what the API does now to keep it unblocked |
 | Observability | [req-observability.md](./req-observability.md) | OTel logs and metrics, collector-ready |
 | Secrets | [req-secrets.md](./req-secrets.md) | Kubernetes Secrets, never env values |
@@ -155,6 +156,7 @@ The assessment text above is the source requirement. Details are split by catego
 | Tests | [req-tests.md](./req-tests.md) | unit and integration tests, lifecycle, health mapping, errors |
 | Pod health | [req-health.md](./req-health.md) | liveness and readiness of the API pod itself |
 | Security | [req-security.md](./req-security.md) | token minting, namespace scope, Secret references, TLS, limits |
+| Stack | [req-stack.md](./req-stack.md) | FastAPI, Python, OpenAPI schema as the contract, Helm chart packaging |
 | Review | [review-security.md](./review-security.md), [review-validation.md](./review-validation.md) | findings behind the security and consistency fixes |
 
 ## Decisions
@@ -184,8 +186,16 @@ The assessment text above is the source requirement. Details are split by catego
 | D21 | Namespace scope | `ALLOWED_NAMESPACES` allowlist, empty denies all; refused with 403 before any Kubernetes call | Security |
 | D22 | Secret references | Only Secrets carrying an allow label | Security |
 | D23 | Transport | HTTPS required in staging and prod; CLI refuses plain `http://` except localhost | Security |
+| D24 | Tech stack | FastAPI on Python | Stack |
+| D25 | API schema | OpenAPI 3.1, generated from code and committed, as the contract | Stack |
+| D26 | Deployment packaging | One standalone Helm chart per service in `charts/<name>/`, kept apart from service code (no `.infra/` folder). Overlays in `environments/<env>/<chart>.yaml` over the shared `environments/base.yaml`. No umbrella or library chart for now | Stack |
+| D27 | Cluster access | Every Kubernetes call goes through a `ClusterPort` interface, implemented by a Kubernetes adapter (adapter pattern). Nothing outside the adapter imports the SDK | Stack |
+| D28 | Log streaming | WebSocket, authenticated over HTTP first: a Bearer-authenticated `POST` returns a 30 s ticket, and only the ticket opens the WebSocket | Logs |
+| D29 | Replica affinity | Traefik cookie session affinity on the Service in staging and prod, so per-replica state (rate limits, stream counts, ticket reuse) works per client. A hint only: correctness never depends on it | Logs |
+| D30 | Log stream pods | One WebSocket carries all of a deployment's pods, merged. R21 counts WebSockets, not pods | Logs |
+| D31 | Default resources | `resources` is optional on create: when omitted the API applies configured defaults (requests 50m / 64Mi, limits 200m / 128Mi). When given it must be complete. The pod always has all four values | API |
 
-Rule IDs in the category files: `N` no caching, `T` tokens, `A` auth order, `O` observability, `S` deployment status, `K` secrets, `C` config, `V` validation, `Q` tests, `P` versioning, `H` pod health, `U` UI, `R` security.
+Rule IDs in the category files: `N` no caching, `T` tokens, `A` auth order, `O` observability, `S` deployment status, `K` secrets, `C` config, `V` validation, `Q` tests, `P` versioning, `H` pod health, `U` UI, `R` security, `F` stack and schema, `CL` CLI rules, `CT` CLI tests, `LG` log streaming rules, `LT` log streaming tests.
 
 ## Out of scope
 

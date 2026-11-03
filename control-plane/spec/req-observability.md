@@ -16,7 +16,7 @@ OpenTelemetry (OTel) is the standard for logs and metrics. **No gateway or colle
 | O8 | **Low cardinality.** Deployment names, UIDs, pod names and user ids are never metric attributes (logs only). Routes use the template (`/api/v1/deployments/{id}`), not the real path. |
 | O9 | **Audit events.** Each create, patch, delete and restart logs one event with `event.name`, actor (`sub` and `iss`), namespace, name, UID and outcome. With the mock provider the actor is self-asserted (R26). |
 | O10 | **Tracing readiness.** Accept and propagate the W3C `traceparent` header, and put `trace_id` and `span_id` in logs. Emitting traces is out of scope now. |
-| O11 | **Configuration.** The OTel variables appear in `charts/app/values.yaml` and `values.schema.json` (per `AGENTS.md`), empty by default. `LOG_LEVEL` is configurable. |
+| O11 | **Configuration.** The OTel variables appear in `charts/api-service/values.yaml` and `values.schema.json` (per `AGENTS.md`), empty by default. `LOG_LEVEL` is configurable. |
 
 ## Assumptions to confirm
 

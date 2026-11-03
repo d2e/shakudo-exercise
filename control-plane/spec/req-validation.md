@@ -30,7 +30,7 @@ Part of the spec set indexed in [`req.md`](./req.md) (Part 1 error handling, Par
 | V11 | `image` | yes | Valid container image reference: `[registry[:port]/]path[:tag][@sha256:<64 hex>]`, path lowercase, no spaces, max 255 chars. A tag or digest is **required**, and `latest` is rejected (D4). Rejects `""`, `nginx:`, `nginx::1`, `NGINX:1.0`, `nginx:bad tag`. The registry must be on `ALLOWED_REGISTRIES` when that is set (R20). |
 | V12 | `replicas` | no (1) | Integer from 0 to `MAX_REPLICAS` (20, R19). Negative gives 400. |
 | V13 | `port` | no | Integer 1 to 65535. |
-| V14 | `resources` | yes | Both `requests` and `limits`, each with `cpu` and `memory`. Quantities must parse (`100m`, `0.5`, `128Mi`, `1Gi`) and be greater than 0. `limits` must be at least `requests`, for cpu and for memory. The caps in R19 apply (CPU limit up to 2, memory limit up to 2 GiB). |
+| V14 | `resources` | no (defaults, D31) | When omitted, the configured defaults are applied (`DEFAULT_CPU_REQUEST`, `DEFAULT_MEMORY_REQUEST`, `DEFAULT_CPU_LIMIT`, `DEFAULT_MEMORY_LIMIT`; see [req-config.md](./req-config.md)). When present it must be **complete**, with no partial merge: both `requests` and `limits`, each with `cpu` and `memory`. Quantities must parse (`100m`, `0.5`, `128Mi`, `1Gi`) and be greater than 0. `limits` must be at least `requests`, for cpu and for memory. The caps in R19 apply (CPU limit up to 2, memory limit up to 2 GiB), to the defaults as well. |
 | V15 | `env` | no | Array, max 50. Each entry has `name` matching `^[A-Za-z_][A-Za-z0-9_]*$` and exactly one of `value` (string, max 4096) or a Secret reference (`name` as a DNS-1123 subdomain, `key` matching `^[-._a-zA-Z0-9]{1,253}$`, see K8–K10). No duplicate names. |
 | V16 | `labels` | no | Max 20. Keys and values follow Kubernetes label syntax (optional DNS-subdomain prefix, name up to 63 chars, value up to 63 chars). Reserved keys (`app.kubernetes.io/managed-by` and the selector label) are rejected with 400, not overridden. |
 | V17 | `command`, `args` | no | Arrays of strings, max 50 items, each up to 4096 chars. `command` entries are not empty. |
@@ -51,6 +51,7 @@ Part of the spec set indexed in [`req.md`](./req.md) (Part 1 error handling, Par
 | V22 | Every invalid case asserts that the Kubernetes client was **not called** (V1). |
 | V23 | A test with several errors in one body asserts that all are reported (V3). |
 | V24 | Required examples: bad image strings, negative replicas, missing required fields, names with invalid characters (the assessment's list). |
+| V25 | Resources (D31): omitted gives 201 with all four default values on the pod and `resourcesDefaulted: true`; a partial `resources` gives 400 naming the missing field; defaults that break V14 or R19 stop startup (C6). |
 
 ## Assumptions to confirm
 

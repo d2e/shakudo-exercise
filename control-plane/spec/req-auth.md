@@ -19,10 +19,10 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only.
 | :-- | :--- |
 | A1 | **Order of checks:** (1) authenticate, 401; (2) validate input, 400; (3) check the namespace allowlist, 403 (R7); (4) look up and act on the cluster, 404, 409, 500. An unauthenticated request never reaches steps 2 to 4. |
 | A2 | **Enforced in one place**, as a global dependency or middleware, not by each handler. A new route is protected by default. |
-| A3 | **Default deny.** Only an explicit public list skips authentication: `/healthz`, `/readyz`, `/api/v1/auth/token`, `/api/v1/auth/refresh`, and the OIDC discovery and JWKS documents. The token endpoint is public only in the sense that it needs no Bearer token: it still requires the bootstrap secret (R1). OpenAPI and docs are **not** on this list (R23). |
+| A3 | **Default deny.** Only an explicit public list skips authentication: `/healthz`, `/readyz`, `/api/v1/auth/token`, `/api/v1/auth/refresh`, and the OIDC discovery and JWKS documents. The token endpoint is public only in the sense that it needs no Bearer token: it still requires the bootstrap secret (R1). OpenAPI and docs are **not** on this list (R23). One more route is not Bearer-authenticated: the log WebSocket `/api/v1/logs/stream`, which accepts only a short-lived ticket obtained with a Bearer token (D28, [req-logs.md](./req-logs.md)). |
 | A4 | **No information leak before login.** Without a valid token, a request to a protected path always gets 401, whether the id exists or the body is valid. 400, 404 and 409 are never seen by unauthenticated callers. |
 | A5 | **401 format:** `WWW-Authenticate: Bearer`, with the expired-token hint when relevant (T2). Nothing about the token is echoed. |
-| A6 | **Streams** (`deploy logs`) are authenticated when opened (T8). |
+| A6 | **Streams** (`deploy logs`) are authenticated over HTTP first: a Bearer-authenticated ticket request, then a WebSocket opened with the ticket (D28, [req-logs.md](./req-logs.md)). |
 | A7 | **Clients log in first.** A client must hold a valid token before calling the API (`deploy login`, see [req-cli.md](./req-cli.md)). |
 | A8 | **Tests:** every protected route returns 401 without a token (checked from the route table, so new routes are covered); an unauthenticated request with an invalid body returns 401, not 400; the same request with a valid token returns 400; no Kubernetes call is made on 401. |
 
@@ -43,7 +43,7 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only.
 | T5 | **Refresh token lifetime** is longer than the access token: **1 hour** (R5; was 8 hours). After that, the user must log in again. |
 | T6 | **Refresh tokens are signed JWTs, not stored server-side** (a `typ` claim marks them refresh-only). A refresh token must be rejected when presented as an access token, and the reverse. This keeps the service stateless. |
 | T7 | **CLI behaviour** is in [req-cli.md](./req-cli.md). `DEPLOY_TOKEN` is used as-is and is never refreshed. |
-| T8 | **Long operations.** A log stream is authenticated when opened and ends at the token's expiry. The client reconnects with a fresh token. |
+| T8 | **Long operations.** A log stream ends at the expiry of the access token that requested its ticket (close code `4001`). The client requests a new ticket with a fresh token and reconnects. |
 | T9 | **Tests.** Expired token gives 401 with the expired hint. Lifetime above 300 s is capped. Refresh returns a working token. An expired or wrong-type refresh token is rejected. |
 
 ## Signing key cache (D19)

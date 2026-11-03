@@ -18,18 +18,18 @@ Part of the spec set indexed in [`req.md`](./req.md). Endpoints and the request 
 
 | # | Requirement |
 | :-- | :--- |
-| P1 | The assessment's `/api/deployments...` paths become `/api/v1/deployments...`: `POST` and `GET /api/v1/deployments`, `GET`, `PATCH` and `DELETE /api/v1/deployments/{id}`, `POST /api/v1/deployments/{id}/restart`. |
+| P1 | The assessment's `/api/deployments...` paths become `/api/v1/deployments...`: `POST` and `GET /api/v1/deployments`, `GET`, `PATCH` and `DELETE /api/v1/deployments/{id}`, `POST /api/v1/deployments/{id}/restart`. Log streaming adds `POST /api/v1/deployments/{id}/logs/ticket` and the WebSocket `GET /api/v1/logs/stream` ([req-logs.md](./req-logs.md)). |
 | P2 | Auth endpoints are already under `/api/v1/auth/...` ([req-auth.md](./req-auth.md)). |
 | P3 | Probes (`/healthz`, `/readyz`) and the OIDC discovery and JWKS documents stay at their standard unversioned paths (assumption). |
 | P4 | A request to an unversioned `/api/deployments...` path returns 404. No redirect, no alias (assumption). |
 | P5 | Within v1, changes are backward compatible only: new optional fields and endpoints are allowed, removing or renaming fields is not. Breaking changes need `/api/v2`. |
-| P6 | The OpenAPI document is served and states the version (`1.0.0`). |
+| P6 | The OpenAPI document states the version (`1.0.0`). Format, generation and serving rules are in [req-stack.md](./req-stack.md) (D25, F8–F15). |
 
 ## Behaviour
 
 - **Errors** follow the assessment: 400 invalid input, 404 unknown id, 409 duplicate name in the namespace, 500 for Kubernetes failures with a meaningful message. Added: 401 unauthenticated, 403 namespace not allowed (R7), 429 rate limited (R18). Bodies are structured JSON (`error.code`, `error.message`, `request_id`; shape is an assumption). Messages for Kubernetes failures are fixed and sanitized (R24).
 - **PATCH** accepts `replicas` and/or `image` (at least one). Other fields are rejected with 400. A new image triggers a rolling update.
-- **Create** requires `name`, `namespace`, `image` and all four resource values. Defaults: `replicas` 1, `env` and `labels` empty. It sets `progressDeadlineSeconds` to 60 (assumption) so a bad image reaches `FAILING` quickly.
+- **Create** requires `name`, `namespace` and `image`. `resources` is optional (D31): when omitted the API applies the configured defaults, and when given it must be complete (V14). The pod always has all four values, so the `AGENTS.md` rule holds. The response says `resourcesDefaulted: true` when defaults were applied. Defaults: `replicas` 1, `env` and `labels` empty. It sets `progressDeadlineSeconds` to 60 (assumption) so a bad image reaches `FAILING` quickly.
 - **Delete** cascades to ReplicaSets and Pods (foreground propagation), then applies D9.
 - **Restart** patches the pod-template annotation `kubectl.kubernetes.io/restartedAt`.
 

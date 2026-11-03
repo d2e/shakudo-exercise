@@ -79,7 +79,7 @@ Rules are in [req-security.md](./req-security.md). Tests that need a cluster are
 | Q38 | Render the chart | NetworkPolicy is default-deny with only the allowed egress (R22) |
 | Q39 | Request `/docs` and `/openapi.json` outside dev | 404, or 401 without a token (R23) |
 | Q40 | Render the chart with an enabled ingress and no TLS outside dev | schema rejects it (R15) |
-| Q41 | Open a fourth log stream for one user | refused (R21) |
+| Q41 | Open a fourth log stream for one user | ticket request and upgrade refused (R21, LG11) |
 
 ## Running tests
 

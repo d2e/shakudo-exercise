@@ -21,7 +21,7 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only. Variabl
 | C7 | **Readiness reflects connectivity.** `/readyz` makes a live, cheap call to the configured endpoint; `/healthz` never depends on the cluster. |
 | C8 | **Startup log of effective config** (secrets omitted), so an operator can see which endpoint and mode are active. |
 | C9 | **Read once at startup.** Changing configuration needs a restart. The chart restarts pods on change with a config checksum annotation. |
-| C10 | **Chart integration** per `AGENTS.md`: new settings go in `charts/app/values.yaml`, mirrored in `values.schema.json`, with per-environment overrides only in `environments/*`. Non-secret settings go in a ConfigMap, credentials in a Secret. |
+| C10 | **Chart integration** per `AGENTS.md`: new settings go in `charts/api-service/values.yaml`, mirrored in `values.schema.json`, with per-environment overrides only in `environments/<env>/api-service.yaml` (D26). Non-secret settings go in a ConfigMap, credentials in a Secret. |
 | C11 | **Tests:** defaults apply; overrides apply; invalid values are rejected at startup; connection mode precedence is respected; no secret value appears in logs or errors. |
 
 ## Other settings
@@ -30,6 +30,7 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only. Variabl
 | :--- | :--- | :--- |
 | `HOST`, `PORT` | `0.0.0.0`, `8000` | listen address |
 | `LOG_LEVEL` | `info` | |
+| `DEFAULT_CPU_REQUEST`, `DEFAULT_MEMORY_REQUEST`, `DEFAULT_CPU_LIMIT`, `DEFAULT_MEMORY_LIMIT` | `50m`, `64Mi`, `200m`, `128Mi` | applied when create omits `resources` (D31). Must satisfy V14 and R19, checked at startup (C6) |
 | `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_DISCOVERY_URL` | existing defaults | see [req-auth.md](./req-auth.md) |
 | `MOCK_AUTH_ENABLED` | `true` | demo only; startup fails if `true` outside dev (R3) |
 | `ACCESS_TOKEN_TTL_SECONDS` | `300` | maximum 300 (T1) |
