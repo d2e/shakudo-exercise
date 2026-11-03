@@ -146,7 +146,7 @@ The assessment text above is the source requirement. Details are split by catego
 | API | [req-api.md](./req-api.md) | behaviour, errors, no-caching rule, RBAC impact |
 | Status | [req-status.md](./req-status.md) | response fields, health rules, test scenarios |
 | Auth | [req-auth.md](./req-auth.md) | JWT, mock identity, 5-minute tokens and refresh |
-| Logs | [req-logs.md](./req-logs.md) | log streaming: HTTP-issued ticket, then WebSocket (not built) |
+| Logs | [req-logs.md](./req-logs.md) | log streaming: HTTP-issued ticket, then WebSocket (built) |
 | CLI | [req-cli.md](./req-cli.md) | the one CLI doc: commands, auth, behaviour, tests, open decisions |
 | UI (later) | [req-ui.md](./req-ui.md) | planned web UI, and what the API does now to keep it unblocked |
 | Observability | [req-observability.md](./req-observability.md) | OTel logs and metrics, collector-ready |
