@@ -15,6 +15,7 @@ Deployments, a `deploy` CLI for it, a Helm chart, and tests that check every API
 | CLI | [`control-plane/cli/`](./control-plane/cli/README.md) |
 | Helm chart and overlays | [`charts/api-service/`](./charts/api-service/), `environments/*/api-service.yaml` |
 | Try it by hand | [curl guide](./control-plane/api-service/doc/testing-the-api.md), [CLI guide](./control-plane/cli/doc/testing-the-cli.md) |
+| How it was built (AI agents, skill) | [`control-plane/docs/ai-tooling.md`](./control-plane/docs/ai-tooling.md) |
 
 ```bash
 make test-api-unit                                        # API unit tests (fake cluster, no network)
