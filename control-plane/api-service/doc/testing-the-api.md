@@ -4,6 +4,9 @@ Step by step, from a deployed release or a local run. For automated checks use `
 `make test-integration` instead (see [README.md](./README.md)). Every call below was run against the dev
 deployment; the verify step compares what the API says with what Kubernetes actually holds.
 
+The same flow with the `deploy` CLI, including the JSON payload each command sends, is in
+[testing-the-cli.md](../../cli/doc/testing-the-cli.md).
+
 ## 0. Prerequisites
 
 - The release is deployed: `make load-api-image && make deploy-dev CHART=api-service`, and the `demo` namespace

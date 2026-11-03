@@ -3,18 +3,21 @@
 FastAPI service that creates and manages Kubernetes Deployments. Requirements: [`../../spec/req.md`](../../spec/req.md).
 Contract: [`../../spec/openapi.yaml`](../../spec/openapi.yaml) (generated, `make openapi`).
 
+End to end picture: [`../../docs/architecture.md`](../../docs/architecture.md).
+
 ## Layout (`src/api_service/`)
 
 | Module | Role |
 | :--- | :--- |
 | `app.py`, `main.py` | app factory, OpenAPI shaping, uvicorn entry (`python -m api_service.main`) |
 | `security.py` | one pipeline: request id, authentication first (A1-A4), rate limits, headers, access log |
-| `controllers/` | HTTP layer, thin: `deployments.py` (`/api/v1/deployments...`), `probes.py` (`/healthz`, `/readyz`), `auth.py` (mock identity, OIDC documents) |
+| `controllers/` | HTTP layer, thin: `deployments.py` (`/api/v1/deployments...`), `probes.py` (`/healthz`, `/readyz`), `logs.py` (ticket request and the log WebSocket), `auth.py` (mock identity, OIDC documents) |
 | `service.py` | use cases and check order: input 400, allowlist 403, then the cluster |
+| `log_service.py`, `streaming.py` | log streaming (D28): the ticket request, the one WebSocket check (ticket, Origin, live re-check, R21 limit), and the reader-thread pump with a bounded queue |
 | `ports.py` | `ClusterPort` interface and `KubeFailure`: what the use cases need from the cluster, no SDK types (D27) |
 | `kube.py` | `KubernetesAdapter`, the `ClusterPort` implementation and the only module that imports the Kubernetes SDK; no caching; errors reduced to fixed kinds |
 | `builder.py` | pure manifest builders (PSS restricted, tmpfs `/tmp`, probes, managed label) |
-| `models/` | strict Pydantic models, one module per concern: `deployment.py`, `responses.py`, `auth.py`, `error.py` |
+| `models/` | strict Pydantic models, one module per concern: `deployment.py`, `responses.py`, `logs.py`, `auth.py`, `error.py` |
 | `validation.py` | pure input checks used by the models |
 | `health.py`, `domain.py` | pure health mapping over plain snapshots |
 | `auth/` | token minting and validation, signing-key cache (the HTTP side is `controllers/auth.py`) |
@@ -34,6 +37,20 @@ scenario, and how to confirm each result against the real cluster with `kubectl`
 
 Settings are environment variables, see `config.py`. `ALLOWED_NAMESPACES` empty denies everything (R6).
 RBAC for the pod's ServiceAccount: [`charts/api-service/templates/rbac.yaml`](../../../charts/api-service/templates/rbac.yaml).
+
+## Logs (D28, `spec/req-logs.md`)
+
+Two steps. `POST /api/v1/deployments/{id}/logs/ticket` (Bearer, normal pipeline) returns a 30 s ticket. Then open the
+WebSocket `GET /api/v1/logs/stream` offering the subprotocols `logs.v1` and `ticket.<value>` (never in the URL). Frames
+are JSON `{"pod","time","line"}`; the server closes with 1000 (logs ended), 4001 (token expired, reconnect with a new
+ticket and `sinceTime`), 1001 (shutdown), 1013 (client too slow), 1011 (cluster failure). A bad ticket fails the
+handshake (HTTP 403, no upgrade).
+
+```
+base, gateway, stop = run_api()          # test/e2e_server.py: the real app on a free port, in-memory cluster
+gateway.logs[("demo", "p1")] = log_lines("a1", "a2")   # script a pod's log; gateway.keep_open = True keeps it open
+stop()                                   # stop.bootstrap_secret_file lets a client `deploy login`
+```
 
 ## Behaviour worth knowing
 
