@@ -46,16 +46,29 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only.
 | T8 | **Long operations.** A log stream is authenticated when opened and ends at the token's expiry. The client reconnects with a fresh token. |
 | T9 | **Tests.** Expired token gives 401 with the expired hint. Lifetime above 300 s is capped. Refresh returns a working token. An expired or wrong-type refresh token is rejected. |
 
-## No caching of identity data
+## Signing key cache (D19)
 
 | # | Requirement |
 | :-- | :--- |
-| N8 | The OIDC discovery document and signing keys (JWKS) are fetched when a token is validated, not stored. This replaces `_DISCOVERY_CACHE` and `_JWKS_CACHE` in `app/auth.py`. In mock mode the keys are local, so this costs no network call. |
+| D19 | The **token signing certificate (public key) is cached**, and each token is validated against the cached key. This **replaces** the earlier rule that identity data is never cached (old N8). |
+
+| # | Requirement |
+| :-- | :--- |
+| N8 | The signing keys (JWKS) and the OIDC discovery document are cached in memory, per pod. Most requests make no call to the identity provider. Only public keys are cached, never tokens. In mock mode the keys are local. |
+| N9 | **Validation against the cached key:** pick the key by `kid`; accept `RS256` only; verify the signature, then `iss`, `aud`, `exp` and `nbf`. A token with no `kid`, or with no matching key, gets 401. There is no fallback to the first key or to a local key. |
+| N10 | **Expiry of the cache.** Cached keys are refetched after a TTL (`JWKS_CACHE_TTL_SECONDS`, default 600, assumption). |
+| N11 | **Key rotation.** An unknown `kid` triggers one immediate refetch and a retry. Refetches are rate-limited (at least 30 s apart, assumption) so random `kid` values cannot flood the provider. |
+| N12 | **Provider outage.** Cached keys keep working for a maximum stale age (1 hour, assumption), then validation fails closed with 401. Fetch failures are logged without secrets. |
+| N13 | **Single fetch at a time.** Concurrent requests that need a refetch share one fetch. |
+| N14 | **Scope.** This applies only to identity keys. Kubernetes data is still never cached ([req-api.md](./req-api.md), N1–N7). |
+| N15 | **Tests:** many requests cause one fetch; an unknown `kid` causes one refetch; repeated random `kid` values are rate-limited; a TTL expiry refetches; a provider outage works within the stale window and fails closed after it; a token signed by another key, `alg: none` and HS256 are rejected. |
 
 ## Consequences
 
 - A refresh token cannot be revoked before it expires without server-side state (T6). Accepted for the demo; a real provider handles revocation.
-- With a real provider, T4 to T6 describe the mock only. Refresh uses the provider's standard `refresh_token` grant, and each request adds one or two network calls (N8). If the provider is unreachable, requests fail rather than use stored keys.
+- With a real provider, T4 to T6 describe the mock only. Refresh uses the provider's standard `refresh_token` grant.
+- A key removed at the provider stays trusted until the cache TTL passes (up to 10 minutes), or until a restart. This is the cost of caching, and it is accepted.
+- The existing code already caches keys forever with no TTL or rotation handling, and falls back to the first key when `kid` is missing. N9 to N12 fix both.
 
 ## Assumptions to confirm
 
@@ -64,3 +77,5 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only.
 3. Refresh tokens are not single-use, because rotation needs stored state.
 4. A log stream ends at token expiry rather than being extended.
 5. No role-based authorization yet: any valid token may call every endpoint.
+6. Cache values: TTL 10 minutes, refetch cooldown 30 s, maximum stale age 1 hour.
+7. The discovery document is cached together with the keys.

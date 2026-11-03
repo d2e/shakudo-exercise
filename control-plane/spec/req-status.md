@@ -1,6 +1,6 @@
 # Status and Monitoring Requirements
 
-Detail for Part 2 of [`req.md`](./req.md). Follows decisions D1, D2, D5 and the no-caching rule (N1–N8). Requirements only.
+Detail for Part 2 of [`req.md`](./req.md). Follows decisions D1, D2, D5 and the no-caching rule (N1–N7). Requirements only.
 
 ## Response fields
 

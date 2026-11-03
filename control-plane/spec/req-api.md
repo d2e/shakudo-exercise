@@ -47,7 +47,7 @@ Part of the spec set indexed in [`req.md`](./req.md). Endpoints and the request 
 | N6 | **Responses are not cacheable.** `Cache-Control: no-store`. |
 | N7 | **Test:** change the cluster directly (outside the API) and show the next GET reflects it. |
 
-Identity data (N8) is covered in [req-auth.md](./req-auth.md).
+The one exception is the token signing key, which is cached and validated against (D19, N8–N15 in [req-auth.md](./req-auth.md)). That cache holds identity keys only, never cluster data.
 
 ## Consequences
 

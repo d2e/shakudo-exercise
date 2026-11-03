@@ -177,6 +177,7 @@ The assessment text above is the source requirement. Details are split by catego
 | D16 | Versioning | API is v1: every endpoint is under `/api/v1` (overrides the `/api/...` paths in the assessment text) | API |
 | D17 | Auth order | Authentication runs before any handler: before validation and any Kubernetes call | Auth |
 | D18 | Pod health | `/healthz` (liveness) and `/readyz` (readiness, checks the cluster live) for the API pod | Pod health |
+| D19 | Signing key cache | Token signing keys are cached and tokens are validated against the cached key. Kubernetes data is still never cached | Auth |
 
 Rule IDs in the category files: `N` no caching, `T` tokens, `A` auth order, `O` observability, `S` deployment status, `K` secrets, `C` config, `V` validation, `Q` tests, `P` versioning, `H` pod health, `U` UI.
 
