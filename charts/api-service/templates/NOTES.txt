@@ -1,0 +1,24 @@
+Installed {{ include "api-service.fullname" . }} ({{ .Values.config.env.ENVIRONMENT }} mode).
+
+Reach the API:
+{{- if .Values.ingress.enabled }}
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}{{ (first .paths).path }}
+{{- end }}
+{{- else }}
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "api-service.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+  Then visit: http://localhost:{{ .Values.service.port }}/healthz
+{{- end }}
+{{- if not .Values.allowedNamespaces }}
+
+WARNING: allowedNamespaces is empty, so the API denies every namespace (D21).
+{{- else }}
+
+Allowed namespaces (must already exist): {{ join ", " .Values.allowedNamespaces }}
+{{- end }}
+
+Run integration tests:
+  helm test {{ .Release.Name }} --namespace {{ .Release.Namespace }} --logs
+
+Check status:
+  kubectl -n {{ .Release.Namespace }} get pods,svc,ingress -l app.kubernetes.io/instance={{ .Release.Name }}

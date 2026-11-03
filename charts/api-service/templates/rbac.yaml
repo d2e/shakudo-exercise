@@ -1,0 +1,97 @@
+{{- /*
+Least-privilege identity for the API when it talks to the Kubernetes API (folded in from control-plane/deploy/rbac.yaml).
+Authentication: the pod's projected ServiceAccount token. Authorization: only the rules below.
+
+Allowed:  create/get/list/delete namespaces (ensure namespace; D9 removes API-created empty ones)
+          create/get/list/patch/delete deployments (create, scale, image update, restart, cascade delete)
+          get/list replicasets and pods (pod ownership check), get pods/log
+          create resourcequotas, limitranges (defaults for API-created namespaces, R10)
+Denied:   update, secrets, exec, services, RBAC objects, nodes, everything else.
+
+Secrets (R12/R14) and the emptiness-check lists (R11) are NOT cluster-wide: the Role at the end is created
+only in each namespace of .Values.allowedNamespaces, which must exist when the release is installed.
+Cluster-scoped names carry the release fullname, so two releases in one cluster do not collide.
+*/ -}}
+{{- if .Values.rbac.enabled }}
+{{- $fullname := include "api-service.fullname" . }}
+{{- $sa := include "api-service.serviceAccountName" . }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ $fullname }}-workload-manager
+  labels:
+    {{- include "api-service.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "create", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "create", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["resourcequotas", "limitranges"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ $fullname }}-workload-manager
+  labels:
+    {{- include "api-service.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ $fullname }}-workload-manager
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ .Release.Namespace }}
+{{- range .Values.allowedNamespaces }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $fullname }}-namespace-checks
+  namespace: {{ . }}
+  labels:
+    {{- include "api-service.labels" $ | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["configmaps", "services", "persistentvolumeclaims"]
+    verbs: ["list"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets", "daemonsets"]
+    verbs: ["list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $fullname }}-namespace-checks
+  namespace: {{ . }}
+  labels:
+    {{- include "api-service.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $fullname }}-namespace-checks
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa }}
+    namespace: {{ $.Release.Namespace }}
+{{- end }}
+{{- end }}

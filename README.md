@@ -23,6 +23,7 @@ A production-grade Kubernetes architecture framework designed to maintain Helm c
 │   ├── test_auth.py                # OIDC & cryptographic JWT validation test cases
 │   └── test_k8s.py                 # Kubernetes mock integration test cases
 ├── charts/                         # Reusable, version-controlled Helm charts
+│   ├── api-service/                # Control-plane API chart (same layout as app/; RBAC, config, secrets mounts)
 │   └── app/
 │       ├── Chart.yaml              # Chart metadata (SemVer v2, appVersion)
 │       ├── values.yaml             # Canonical baseline defaults (PSS restricted)
@@ -46,6 +47,7 @@ A production-grade Kubernetes architecture framework designed to maintain Helm c
 │   ├── base.yaml                   # Common cluster baselines
 │   ├── dev/
 │   │   ├── values.yaml             # Development overrides (1 replica, debug logs, low resources)
+│   │   ├── api-service.yaml        # Same, for the api-service chart (<chart>.yaml per chart)
 │   │   └── secrets.example.yaml    # Secret template for dev
 │   ├── staging/
 │   │   ├── values.yaml             # Staging overrides (mirrors prod scaling/testing)

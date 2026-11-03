@@ -1,0 +1,96 @@
+# api-service (control-plane API): staging overlay. Deltas only; baseline is environments/base.yaml.
+replicaCount: 2
+
+config:
+  env:
+    ENVIRONMENT: "staging"
+    LOG_LEVEL: "info"
+    MOCK_AUTH_ENABLED: "false"
+    OIDC_ISSUER: "https://auth.staging.example.com"
+    ALLOWED_REGISTRIES: "registry.example.com"
+
+allowedNamespaces:
+  - staging-workloads
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Cookie session affinity (D29): keeps one client on one API replica, so per-replica state
+# (rate limits, stream counts, ticket reuse) works per client. A hint only; nothing depends on it.
+service:
+  annotations:
+    traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.name: "deploy_affinity"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.secure: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.httponly: "true"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.samesite: "strict"
+    traefik.ingress.kubernetes.io/service.sticky.cookie.maxage: "3600"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: api.staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - api.staging.example.com
+      secretName: api-staging-tls-cert
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 75
+  targetMemoryUtilizationPercentage: 80
+
+networkPolicy:
+  enabled: true
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - port: 8000
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Kubernetes API server and the OIDC provider (HTTPS)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: 443
+          protocol: TCP
+        - port: 6443
+          protocol: TCP
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - api-service
+          topologyKey: kubernetes.io/hostname
