@@ -171,7 +171,7 @@ The assessment text above is the source requirement. Details are split by catego
 | D6 | `port` | `containerPort` only, no Service | API |
 | D7 | UI | CLI first, `deploy logs` is a stretch goal; web UI comes later (D15) | CLI |
 | D8 | Pod security | Always PSS restricted, callers cannot relax it | API |
-| D9 | Namespaces | Created if missing, deleted after DELETE if now empty | API |
+| D9 | Namespaces | Created if missing, deleted after DELETE if now empty and the check can run; kept under least-privilege RBAC (decision A, [req-api.md](./req-api.md)) | API |
 | D10 | Identity | Mock identity provider, real provider documented only | Auth |
 | D11 | Secrets | Stored in Kubernetes Secrets, never in env values | Secrets |
 | D12 | Configuration | Cluster endpoint and connection mode are settings | Config |

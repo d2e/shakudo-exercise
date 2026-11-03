@@ -30,7 +30,7 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only. Finding
 | R8 | The three reserved namespaces (V10) are refused even if listed. |
 | R9 | `GET /api/v1/deployments` without a filter returns only deployments in allowlisted namespaces. A `?namespace=` outside the list gives 403. |
 | R10 | Namespaces the API creates get the managed label, `pod-security.kubernetes.io/enforce: restricted`, and a default `ResourceQuota` and `LimitRange` (values are an assumption). |
-| R11 | **Namespace deletion (D9)** happens only if the namespace is allowlisted, carries the managed label, **and** a final live check finds no objects of these kinds: Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, Pods, Services, PersistentVolumeClaims, Secrets, and ConfigMaps other than `kube-root-ca.crt`. If the check cannot be completed, the namespace is **not** deleted. |
+| R11 | **Namespace deletion (D9)** happens only if the namespace is allowlisted, carries the managed label, **and** a final live check finds no objects of these kinds: Deployments, StatefulSets, DaemonSets, Jobs, CronJobs, Pods, Services, PersistentVolumeClaims, Secrets, and ConfigMaps other than `kube-root-ca.crt`. If the check cannot be completed, the namespace is **not** deleted. Under the chart's RBAC the check cannot complete in API-created namespaces, so they are kept (decision A, [req-api.md](./req-api.md)). |
 
 ## Secret references (D22)
 

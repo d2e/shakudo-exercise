@@ -34,8 +34,12 @@ RBAC for the pod's ServiceAccount: [`charts/api-service/templates/rbac.yaml`](..
 ## Behaviour worth knowing
 
 - **Namespace cleanup (D9)** runs as a background task after `DELETE` returns 202. Foreground deletion keeps
-  the Deployment and pods alive for a while, so it re-checks emptiness for up to 30 s, then deletes the
-  namespace only if it is allowlisted, carries the managed label and the live check finds nothing (R11).
+  the Deployment and pods alive until they exit (a pod ignoring SIGTERM takes the full 30 s grace period), so it
+  re-checks emptiness for grace period + 30 s, then deletes the namespace only if it is allowlisted, carries the
+  managed label and the live check finds nothing (R11). It logs why whenever it keeps a namespace.
+- **Known limit (decision A):** under the chart's least-privilege RBAC an API-created namespace has no per-namespace
+  Role, so the emptiness check is forbidden and the namespace is kept; Secret references there are refused. D9
+  works only with broader credentials, such as the admin kubeconfig used in dev tests.
 - **Default resources (D31):** `resources` is optional on create. Omitted means `DEFAULT_CPU_REQUEST`, `DEFAULT_MEMORY_REQUEST`, `DEFAULT_CPU_LIMIT`, `DEFAULT_MEMORY_LIMIT` (50m / 64Mi, 200m / 128Mi), checked at startup against the caps; the response says `resourcesDefaulted`. A partial `resources` is a 400, never merged.
 - **Secret references** work only in namespaces that have the per-namespace Role in the chart's `rbac.yaml`; otherwise the
   check reads as "missing" and the request is refused with `secret_not_allowed` (R12, R14).

@@ -31,7 +31,7 @@ One test, in this order, each step checked against the live cluster:
 | Q10 | Scale | PATCH `replicas`; the replica count changes in GET, and pods reach ready |
 | Q11 | Update image | PATCH `image`; a rolling update completes and the new image is shown |
 | Q12 | Restart | POST restart; new pods replace the old ones |
-| Q13 | Delete | 202; GET gives 404; the list no longer shows it; no ReplicaSets or Pods remain (cascade); an empty namespace is removed (D9) |
+| Q13 | Delete | 202; GET gives 404; the list no longer shows it; no ReplicaSets or Pods remain (cascade); an empty API-created namespace is removed (D9) **when run with credentials that can list the R11 kinds** (the admin gate). With the chart ServiceAccount the namespace is kept; `test_rbac.py` asserts that |
 
 ## Status mapping (unit)
 

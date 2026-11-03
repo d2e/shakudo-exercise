@@ -11,7 +11,7 @@ Part of the spec set indexed in [`req.md`](./req.md). Endpoints and the request 
 | D4 | Image tags | A missing tag or `latest` is rejected with **400**. The `nginx:latest` scenario uses a pinned tag (follows `AGENTS.md`). |
 | D6 | `port` | Sets `containerPort` only. No Service is created. |
 | D8 | Pod security | The API always applies the PSS **restricted** settings. Callers cannot relax them. Demo images must run non-root (for example `nginxinc/nginx-unprivileged` or `hashicorp/http-echo`). |
-| D9 | Namespaces | Created if missing. After DELETE, the namespace is **deleted if it is now empty**. |
+| D9 | Namespaces | Created if missing. After DELETE, the namespace is **deleted if it is now empty**, when the emptiness check can run. Under the chart's least-privilege RBAC it cannot for API-created namespaces, so they are kept (see Consequences). |
 | D16 | Versioning | The API is **v1**: every endpoint is under `/api/v1`. |
 
 ## Versioning (D16)
@@ -54,6 +54,7 @@ The one exception is the token signing key, which is cached and validated agains
 - The `:id` lookup lists managed deployments on every request: slower on large clusters, accepted.
 - If the cluster is unreachable, the API returns 500 and serves no stale data. Load grows with request volume, so rate limiting is the control.
 - **Kubernetes RBAC model.** A ClusterRole grants `create`, `get`, `list`, `patch`, `delete` on deployments and `create`, `get`, `list`, `delete` on namespaces. Roles in allowlisted namespaces grant `get` on Secrets (R14) and `list` on the kinds needed for the emptiness check (R11). The allowlist (R6) and managed label (D2) are enforced by the API, because Kubernetes RBAC cannot limit by label.
+- **Decision A (accepted): keep as designed and document the limit.** D9 only fires where the API identity can run the R11 emptiness check. With the chart's least-privilege RBAC that is the case only in namespaces that already had the per-namespace Role at install, and those are never API-created. An API-created namespace has no Role, so the check is forbidden and, per R11, the namespace is kept (and Secret references there are refused). In practice the auto-delete is inert under the chart; it works with broader credentials (dev with an admin kubeconfig).
 - D9 is the riskiest decision: a namespace delete permission, and an emptiness check that can race with a new deployment landing in the same namespace. Mitigations (R11): only allowlisted namespaces carrying the managed label, a final live check of the listed kinds immediately before deleting, and no deletion if the check cannot be completed.
 - D8: arbitrary public images that need root or a writable root filesystem will fail to start. That is expected.
 

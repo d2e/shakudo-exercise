@@ -31,4 +31,4 @@ Review of `req.md` and the `req-*.md` files (decisions D1–D19) for contradicti
 
 - V-8: delete the three superseded drafts, or keep them.
 - Numeric values chosen as assumptions (rate limits, caps, quota, 1-hour refresh).
-- Whether auto-delete of namespaces (D9) is worth the read access R11 needs.
+- ~~Whether auto-delete of namespaces (D9) is worth the read access R11 needs.~~ Decided: option A. Keep D9 as designed, accept that it is inert under the chart's least-privilege RBAC, and document it.
