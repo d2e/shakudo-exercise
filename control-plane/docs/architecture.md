@@ -106,6 +106,74 @@ CLI                                   API pod (replica A)                       
  |   close 1000 = logs ended, 1001 = restarting, 1013 = too slow, 1011 = cluster error
 ```
 
+## 3b. Kubernetes architecture (current cluster)
+
+Snapshot of the live dev cluster on 2026-11-03, taken with read-only `kubectl` and `helm` commands. Refresh it with
+`kubectl get ns,deploy,ingress -A`, `helm list -A`, and `kubectl -n demo get all`.
+
+```
+ single-node k3s  v1.36.5+k3s1   (containerd 2.3.4, Ubuntu 26.04, node dt-b450m-ds3h-wifi, control-plane)
+
+ +- kube-system (k3s add-ons) ---------------------------------------------------------------+
+ |  Traefik 3.7 (Helm: traefik, traefik-crd)   svclb-traefik DaemonSet   IngressClass "traefik" (default)
+ |  CoreDNS    metrics-server    local-path-provisioner (default StorageClass)                |
+ +--------------------------------------------------------------------------------------------+
+                  | http  api.dev.local
+ +- api-service-dev  (Helm release api-service-dev, chart api-service 0.1.0, revision 2) -------+
+ |  Ingress -> Service ClusterIP :80 -> targetPort 8000 -> Deployment api-service (1 pod)        |
+ |  ConfigMap  17 settings         Secret  bootstrap-secret + signing-key (mounted as files)     |
+ |  ServiceAccount api-service-dev                       helm test pod (busybox, restricted)      |
+ +----------------------------------------------+---------------------------------------------+
+                                                | ServiceAccount token
+ cluster-scoped:  ClusterRole api-service-dev-workload-manager + ClusterRoleBinding to the SA
+ +- demo  (allowlisted workload namespace, pod-security enforce=restricted) -------------------+
+ |  Role api-service-dev-namespace-checks + RoleBinding to the SA   (secrets get, list kinds)   |
+ |  Deployment http-echo  (created through the API)  ->  ReplicaSet  ->  2 pods                |
+ |  labels: app.kubernetes.io/managed-by=control-plane, app.kubernetes.io/name, team=platform   |
+ +----------------------------------------------------------------------------------------------+
+ default, kube-public, kube-node-lease: untouched.   No ResourceQuota, LimitRange, NetworkPolicy, PDB or HPA exists today.
+```
+
+**What the chart installs** (one release per environment, named `<chart>-<env>`, in the namespace of the same name):
+
+| Object | Purpose | Dev (live) | Staging | Prod |
+| :--- | :--- | :--- | :--- | :--- |
+| Deployment, Service, ServiceAccount, ConfigMap | the API itself | 1 replica | 2 (HPA 2 to 5) | 3 (HPA 3 to 20) |
+| Ingress (Traefik) | entry point | `api.dev.local`, plain http | TLS, `api.staging.example.com` | TLS, `api.example.com` |
+| Sticky cookie on the Service (D29) | one client, one replica | no | yes | yes |
+| PodDisruptionBudget | protect against evictions | off | `minAvailable` 1 | `minAvailable` 2 |
+| NetworkPolicy | default-deny, then DNS, Kubernetes API (443, 6443), ingress from kube-system | off | on | on |
+| Secret | signing key (and the bootstrap secret in dev) | chart-created from a local file | external Secret `api-service-secrets` | external Secret `api-service-secrets` |
+| ClusterRole and binding | the API's cluster-wide rights | yes | yes | yes |
+| Role and binding per allowed namespace | Secret metadata and the emptiness check | `demo` | `staging-workloads` | `workloads` |
+| Identity | token source | mock identity | real provider | real provider |
+
+**The API's rights in the cluster** (nothing else is granted):
+
+| Scope | Resources | Verbs |
+| :--- | :--- | :--- |
+| ClusterRole | namespaces | get, list, create, delete |
+| | deployments | get, list, create, patch, delete |
+| | replicasets, pods | get, list |
+| | pods/log | get |
+| | resourcequotas, limitranges | create |
+| Role in each allowed namespace | secrets | get, list (labels only are used) |
+| | configmaps, services, persistentvolumeclaims, statefulsets, daemonsets, jobs, cronjobs | list (for the emptiness check) |
+
+**Pod security, for the API pod and for every workload it creates.** Both run as non-root with a numeric user (API 101,
+workloads 65532), `RuntimeDefault` seccomp, all capabilities dropped, no privilege escalation, a read-only root
+filesystem, a memory-backed `/tmp`, and CPU and memory requests and limits. Probes: `/healthz` and `/readyz` for the API
+pod, a TCP probe on `port` for workloads. The API pod mounts its Secret read-only at `/var/run/api-secrets`.
+
+**What the API creates per request.** A Deployment labelled `managed-by=control-plane` (the only ones it will list or
+change), with a 60-second progress deadline and a 30-second grace period. For a namespace that does not exist, it also
+creates the Namespace (restricted pod-security label, managed-by label), a ResourceQuota and a LimitRange. After a delete
+it removes such a namespace again once a live check finds it empty. A namespace that already existed, like `demo`, is
+never deleted.
+
+**Not yet exercised on the live cluster:** the staging and prod overlays, the sticky cookie through Traefik, the
+NetworkPolicy, HPA and PDB, a real identity provider, and an external Secret for the signing key.
+
 ## 4. Where each rule is enforced
 
 | Concern | Enforced in | Spec |
