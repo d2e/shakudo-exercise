@@ -1,0 +1,1082 @@
+openapi: 3.1.0
+info:
+  title: Control Plane API
+  description: Create and manage Kubernetes Deployments. Every `/api/v1` call needs
+    a Bearer JWT.
+  version: 1.0.0
+paths:
+  /healthz:
+    get:
+      tags:
+      - Health
+      summary: 'Liveness: process is up'
+      operationId: liveness
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /readyz:
+    get:
+      tags:
+      - Health
+      summary: 'Readiness: cluster reachable'
+      operationId: readiness
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/deployments:
+    post:
+      tags:
+      - Deployments
+      summary: Create a deployment (creates the namespace if missing)
+      operationId: createDeployment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentCreate'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentCreatedOut'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Forbidden
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Conflict
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Too Many Requests
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Internal Server Error
+      security:
+      - bearerAuth: []
+    get:
+      tags:
+      - Deployments
+      summary: List managed deployments, optionally for one namespace
+      operationId: listDeployments
+      parameters:
+      - name: namespace
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: Filter by namespace
+          title: Namespace
+        description: Filter by namespace
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentListOut'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Forbidden
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Too Many Requests
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Internal Server Error
+      security:
+      - bearerAuth: []
+  /api/v1/deployments/{id}:
+    get:
+      tags:
+      - Deployments
+      summary: Deployment status with pods and conditions
+      operationId: getDeployment
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentDetailOut'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Not Found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Too Many Requests
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Internal Server Error
+      security:
+      - bearerAuth: []
+    patch:
+      tags:
+      - Deployments
+      summary: Scale and/or update the image (rolling update)
+      operationId: patchDeployment
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentPatch'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentOut'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Not Found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Too Many Requests
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Internal Server Error
+      security:
+      - bearerAuth: []
+    delete:
+      tags:
+      - Deployments
+      summary: Delete with cascade; an emptied API-created namespace is removed
+      operationId: deleteDeployment
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeleteOut'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Not Found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Too Many Requests
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Internal Server Error
+      security:
+      - bearerAuth: []
+  /api/v1/deployments/{id}/restart:
+    post:
+      tags:
+      - Deployments
+      summary: Rollout restart
+      operationId: restartDeployment
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Id
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeploymentOut'
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Bad Request
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Forbidden
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Not Found
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Too Many Requests
+        '500':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Internal Server Error
+      security:
+      - bearerAuth: []
+  /api/v1/auth/token:
+    post:
+      tags:
+      - Auth
+      summary: Mint a token pair (mock identity provider, dev only)
+      description: Requires the bootstrap secret (compared in constant time). Access
+        tokens last at most 5 minutes.
+      operationId: mintToken
+      parameters:
+      - name: x-bootstrap-secret
+        in: header
+        required: false
+        schema:
+          type: string
+          description: Bootstrap secret (R1)
+          default: ''
+          title: X-Bootstrap-Secret
+        description: Bootstrap secret (R1)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Bad Request
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Too Many Requests
+  /api/v1/auth/refresh:
+    post:
+      tags:
+      - Auth
+      summary: Exchange a refresh token for a new token pair
+      operationId: refreshToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too Many Requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /.well-known/openid-configuration:
+    get:
+      tags:
+      - Auth
+      summary: OIDC discovery document (mock)
+      operationId: oidcDiscovery
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /.well-known/jwks.json:
+    get:
+      tags:
+      - Auth
+      summary: Signing keys (mock)
+      operationId: jwks
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+components:
+  schemas:
+    ConditionOut:
+      properties:
+        type:
+          type: string
+          title: Type
+        status:
+          type: string
+          title: Status
+        reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reason
+        message:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Message
+        lastTransitionTime:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Lasttransitiontime
+      type: object
+      required:
+      - type
+      - status
+      title: ConditionOut
+    ContainerStatusOut:
+      properties:
+        name:
+          type: string
+          title: Name
+        ready:
+          type: boolean
+          title: Ready
+        restartCount:
+          type: integer
+          title: Restartcount
+        state:
+          type: string
+          title: State
+        reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reason
+        message:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Message
+      type: object
+      required:
+      - name
+      - ready
+      - restartCount
+      - state
+      title: ContainerStatusOut
+    DeleteOut:
+      properties:
+        uid:
+          type: string
+          title: Uid
+        name:
+          type: string
+          title: Name
+        namespace:
+          type: string
+          title: Namespace
+        status:
+          type: string
+          title: Status
+          default: deleting
+      type: object
+      required:
+      - uid
+      - name
+      - namespace
+      title: DeleteOut
+    DeploymentCreate:
+      properties:
+        name:
+          type: string
+          title: Name
+        namespace:
+          type: string
+          title: Namespace
+        image:
+          type: string
+          title: Image
+        replicas:
+          type: integer
+          minimum: 0.0
+          title: Replicas
+          default: 1
+        port:
+          anyOf:
+          - type: integer
+            maximum: 65535.0
+            minimum: 1.0
+          - type: 'null'
+          title: Port
+        resources:
+          anyOf:
+          - $ref: '#/components/schemas/Resources'
+          - type: 'null'
+          description: 'Optional (D31): omitted means the configured defaults. When
+            given it must be complete.'
+        env:
+          items:
+            $ref: '#/components/schemas/EnvVar'
+          type: array
+          maxItems: 50
+          title: Env
+        labels:
+          additionalProperties:
+            type: string
+          type: object
+          maxProperties: 20
+          title: Labels
+        command:
+          anyOf:
+          - items:
+              type: string
+            type: array
+            maxItems: 50
+          - type: 'null'
+          title: Command
+        args:
+          anyOf:
+          - items:
+              type: string
+            type: array
+            maxItems: 50
+          - type: 'null'
+          title: Args
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - namespace
+      - image
+      title: DeploymentCreate
+      examples:
+      - args:
+        - -text=hello
+        - -listen=:5678
+        command:
+        - /http-echo
+        env:
+        - name: LOG_LEVEL
+          value: info
+        image: hashicorp/http-echo:1.0.0
+        labels:
+          team: platform
+        name: http-echo
+        namespace: demo
+        port: 5678
+        replicas: 2
+        resources:
+          limits:
+            cpu: 200m
+            memory: 128Mi
+          requests:
+            cpu: 50m
+            memory: 64Mi
+    DeploymentCreatedOut:
+      properties:
+        uid:
+          type: string
+          title: Uid
+        name:
+          type: string
+          title: Name
+        namespace:
+          type: string
+          title: Namespace
+        image:
+          type: string
+          title: Image
+        replicas:
+          $ref: '#/components/schemas/Replicas'
+        conditions:
+          items:
+            $ref: '#/components/schemas/ConditionOut'
+          type: array
+          title: Conditions
+        createdAt:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Createdat
+        updatedAt:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Updatedat
+        health:
+          type: string
+          title: Health
+          description: HEALTHY, DEGRADED, FAILING, PROGRESSING or UNKNOWN
+        namespaceCreated:
+          type: boolean
+          title: Namespacecreated
+        resourcesDefaulted:
+          type: boolean
+          title: Resourcesdefaulted
+      type: object
+      required:
+      - uid
+      - name
+      - namespace
+      - image
+      - replicas
+      - conditions
+      - health
+      - namespaceCreated
+      - resourcesDefaulted
+      title: DeploymentCreatedOut
+      description: 'Create response only: whether this call also created the namespace
+        (D9) and used default resources (D31).'
+    DeploymentDetailOut:
+      properties:
+        uid:
+          type: string
+          title: Uid
+        name:
+          type: string
+          title: Name
+        namespace:
+          type: string
+          title: Namespace
+        image:
+          type: string
+          title: Image
+        replicas:
+          $ref: '#/components/schemas/Replicas'
+        conditions:
+          items:
+            $ref: '#/components/schemas/ConditionOut'
+          type: array
+          title: Conditions
+        createdAt:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Createdat
+        updatedAt:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Updatedat
+        health:
+          type: string
+          title: Health
+          description: HEALTHY, DEGRADED, FAILING, PROGRESSING or UNKNOWN
+        pods:
+          items:
+            $ref: '#/components/schemas/PodOut'
+          type: array
+          title: Pods
+      type: object
+      required:
+      - uid
+      - name
+      - namespace
+      - image
+      - replicas
+      - conditions
+      - health
+      - pods
+      title: DeploymentDetailOut
+    DeploymentListOut:
+      properties:
+        items:
+          items:
+            $ref: '#/components/schemas/DeploymentOut'
+          type: array
+          title: Items
+      type: object
+      required:
+      - items
+      title: DeploymentListOut
+    DeploymentOut:
+      properties:
+        uid:
+          type: string
+          title: Uid
+        name:
+          type: string
+          title: Name
+        namespace:
+          type: string
+          title: Namespace
+        image:
+          type: string
+          title: Image
+        replicas:
+          $ref: '#/components/schemas/Replicas'
+        conditions:
+          items:
+            $ref: '#/components/schemas/ConditionOut'
+          type: array
+          title: Conditions
+        createdAt:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Createdat
+        updatedAt:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Updatedat
+        health:
+          type: string
+          title: Health
+          description: HEALTHY, DEGRADED, FAILING, PROGRESSING or UNKNOWN
+      type: object
+      required:
+      - uid
+      - name
+      - namespace
+      - image
+      - replicas
+      - conditions
+      - health
+      title: DeploymentOut
+    DeploymentPatch:
+      properties:
+        replicas:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Replicas
+        image:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Image
+      additionalProperties: false
+      type: object
+      title: DeploymentPatch
+      examples:
+      - image: hashicorp/http-echo:1.0.1
+        replicas: 3
+    EnvVar:
+      properties:
+        name:
+          type: string
+          title: Name
+        value:
+          anyOf:
+          - type: string
+            maxLength: 4096
+          - type: 'null'
+          title: Value
+        secretRef:
+          anyOf:
+          - $ref: '#/components/schemas/SecretRef'
+          - type: 'null'
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      title: EnvVar
+    Error:
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorBody'
+      type: object
+      required:
+      - error
+      title: Error
+    ErrorBody:
+      properties:
+        code:
+          type: string
+          title: Code
+        message:
+          type: string
+          title: Message
+        request_id:
+          type: string
+          title: Request Id
+          default: ''
+        details:
+          anyOf:
+          - items:
+              $ref: '#/components/schemas/ErrorDetail'
+            type: array
+          - type: 'null'
+          title: Details
+      type: object
+      required:
+      - code
+      - message
+      title: ErrorBody
+    ErrorDetail:
+      properties:
+        field:
+          type: string
+          title: Field
+        rule:
+          type: string
+          title: Rule
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - field
+      - rule
+      - message
+      title: ErrorDetail
+    PodOut:
+      properties:
+        name:
+          type: string
+          title: Name
+        phase:
+          type: string
+          title: Phase
+        restartCount:
+          type: integer
+          title: Restartcount
+        node:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Node
+        terminating:
+          type: boolean
+          title: Terminating
+          description: Pod is being deleted (old pods during a rollout, or after a
+            delete)
+          default: false
+        containerStatuses:
+          items:
+            $ref: '#/components/schemas/ContainerStatusOut'
+          type: array
+          title: Containerstatuses
+      type: object
+      required:
+      - name
+      - phase
+      - restartCount
+      - containerStatuses
+      title: PodOut
+    QuantityPair:
+      properties:
+        cpu:
+          type: string
+          title: Cpu
+          examples:
+          - 50m
+        memory:
+          type: string
+          title: Memory
+          examples:
+          - 64Mi
+      additionalProperties: false
+      type: object
+      required:
+      - cpu
+      - memory
+      title: QuantityPair
+    RefreshRequest:
+      properties:
+        refresh_token:
+          type: string
+          maxLength: 8192
+          minLength: 1
+          title: Refresh Token
+      additionalProperties: false
+      type: object
+      required:
+      - refresh_token
+      title: RefreshRequest
+    Replicas:
+      properties:
+        desired:
+          type: integer
+          title: Desired
+        ready:
+          type: integer
+          title: Ready
+        available:
+          type: integer
+          title: Available
+        unavailable:
+          type: integer
+          title: Unavailable
+      type: object
+      required:
+      - desired
+      - ready
+      - available
+      - unavailable
+      title: Replicas
+    Resources:
+      properties:
+        requests:
+          $ref: '#/components/schemas/QuantityPair'
+        limits:
+          $ref: '#/components/schemas/QuantityPair'
+      additionalProperties: false
+      type: object
+      required:
+      - requests
+      - limits
+      title: Resources
+    SecretRef:
+      properties:
+        name:
+          type: string
+          title: Name
+        key:
+          type: string
+          title: Key
+      additionalProperties: false
+      type: object
+      required:
+      - name
+      - key
+      title: SecretRef
+    TokenRequest:
+      properties:
+        sub:
+          type: string
+          maxLength: 128
+          minLength: 1
+          pattern: ^[A-Za-z0-9_.@:-]+$
+          title: Sub
+          examples:
+          - sre-engineer
+        email:
+          anyOf:
+          - type: string
+            maxLength: 254
+          - type: 'null'
+          title: Email
+        roles:
+          items:
+            type: string
+          type: array
+          maxItems: 20
+          title: Roles
+        expires_in_seconds:
+          anyOf:
+          - type: integer
+            minimum: 1.0
+          - type: 'null'
+          title: Expires In Seconds
+      additionalProperties: false
+      type: object
+      required:
+      - sub
+      title: TokenRequest
+    TokenResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        refresh_token:
+          type: string
+          title: Refresh Token
+        token_type:
+          type: string
+          title: Token Type
+          default: Bearer
+        expires_in:
+          type: integer
+          title: Expires In
+        refresh_expires_in:
+          type: integer
+          title: Refresh Expires In
+      type: object
+      required:
+      - access_token
+      - refresh_token
+      - expires_in
+      - refresh_expires_in
+      title: TokenResponse
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
