@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "api-service.fullname" . }}-config
+  labels:
+    {{- include "api-service.labels" . | nindent 4 }}
+data:
+  PORT: {{ .Values.containerPort | quote }}
+  {{- with .Values.allowedNamespaces }}
+  ALLOWED_NAMESPACES: {{ join "," . | quote }}
+  {{- end }}
+  {{- if include "api-service.secretName" . }}
+  {{- with .Values.secrets.bootstrapSecretKey }}
+  BOOTSTRAP_SECRET_FILE: {{ printf "%s/%s" $.Values.secrets.mountPath . | quote }}
+  {{- end }}
+  {{- with .Values.secrets.signingKey }}
+  SIGNING_KEY_FILE: {{ printf "%s/%s" $.Values.secrets.mountPath . | quote }}
+  {{- end }}
+  {{- end }}
+  {{- range $key, $value := .Values.config.env }}
+  {{- /* floats are how Helm decodes integers: print them without exponent notation */}}
+  {{- $text := ternary (printf "%.0f" $value) (toString $value) (kindIs "float64" $value) }}
+  {{- if $text }}
+  {{ $key }}: {{ $text | quote }}
+  {{- end }}
+  {{- end }}

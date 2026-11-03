@@ -1,0 +1,32 @@
+# api-service (control-plane API): development overlay. Deltas only; baseline is environments/base.yaml.
+# Needs environments/dev/api-service.secrets.yaml (gitignored; see the .example file) for the mock identity secrets.
+replicaCount: 1
+
+config:
+  env:
+    ENVIRONMENT: "dev"
+    LOG_LEVEL: "debug"
+    MOCK_AUTH_ENABLED: "true"
+
+# The namespace must exist before deploying: kubectl create namespace demo
+allowedNamespaces:
+  - demo
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  hosts:
+    - host: api.dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+podDisruptionBudget:
+  enabled: false

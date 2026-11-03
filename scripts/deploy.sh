@@ -2,13 +2,13 @@
 set -euo pipefail
 
 ENV="${1:-dev}"
-RELEASE_NAME="${2:-app-${ENV}}"
-NAMESPACE="${3:-app-${ENV}}"
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-CHART_DIR="${ROOT_DIR}/charts/app"
-ENV_DIR="${ROOT_DIR}/environments"
+# shellcheck source=scripts/_common.sh
+source "${SCRIPT_DIR}/_common.sh"
+
+RELEASE_NAME="${2:-${CHART}-${ENV}}"
+NAMESPACE="${3:-${CHART}-${ENV}}"
 
 if [[ ! -d "${ENV_DIR}/${ENV}" ]]; then
   echo "Error: Unknown environment '${ENV}'" >&2
@@ -16,12 +16,12 @@ if [[ ! -d "${ENV_DIR}/${ENV}" ]]; then
 fi
 
 EXTRA_VALUES=()
-if [[ -f "${ENV_DIR}/${ENV}/secrets.yaml" ]]; then
-  EXTRA_VALUES+=(-f "${ENV_DIR}/${ENV}/secrets.yaml")
+if [[ -f "$(chart_secrets_file "${ENV}")" ]]; then
+  EXTRA_VALUES+=(-f "$(chart_secrets_file "${ENV}")")
 fi
 
 echo "=========================================================="
-echo " Deploying ${RELEASE_NAME} -> namespace: ${NAMESPACE}"
+echo " Deploying ${RELEASE_NAME} (chart: ${CHART}) -> namespace: ${NAMESPACE}"
 echo " Environment: ${ENV}"
 echo "=========================================================="
 
@@ -30,7 +30,7 @@ helm upgrade "${RELEASE_NAME}" "${CHART_DIR}" \
   --namespace "${NAMESPACE}" \
   --create-namespace \
   -f "${ENV_DIR}/base.yaml" \
-  -f "${ENV_DIR}/${ENV}/values.yaml" \
+  -f "$(chart_values_file "${ENV}")" \
   ${EXTRA_VALUES[@]+"${EXTRA_VALUES[@]}"} \
   --wait \
   --timeout 300s \

@@ -1,0 +1,191 @@
+# Default values for the api-service chart (control-plane API).
+# Pod Security Standard 'restricted'. Defaults fail closed: prod mode, mock identity off.
+# Layering: this file < environments/base.yaml < environments/<env>/api-service.yaml
+# Nothing secret belongs in values (K2): secrets are mounted from a Kubernetes Secret as files (K1).
+
+# -- Number of replicas (when autoscaling is disabled)
+replicaCount: 2
+
+image:
+  # -- Container image repository
+  repository: api-service
+  pullPolicy: IfNotPresent
+  # -- Pinned image tag (':latest' is prohibited)
+  tag: "1.0.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+partOf: "control-plane"
+extraLabels: {}
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+  # -- The API authenticates to Kubernetes with the projected ServiceAccount token (in-cluster mode)
+  automountServiceAccountToken: true
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 101
+  runAsGroup: 101
+  fsGroup: 101
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+  runAsNonRoot: true
+  runAsUser: 101
+
+# -- Port uvicorn listens on (exported to the app as PORT)
+containerPort: 8000
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: http
+  annotations: {}
+
+ingress:
+  enabled: false
+  className: "traefik"
+  annotations: {}
+  hosts:
+    - host: api.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# -- Probes (H9). Liveness never depends on the cluster; readiness calls it live (H2, H4).
+probes:
+  startup:
+    enabled: false
+    httpGet:
+      path: /healthz
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 3
+    failureThreshold: 12
+  liveness:
+    enabled: true
+    httpGet:
+      path: /healthz
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readiness:
+    enabled: true
+    httpGet:
+      path: /readyz
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 2
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 25%
+    maxUnavailable: 0
+
+# -- The app flips /readyz to 503 on SIGTERM and drains within 25 s (H7)
+terminationGracePeriodSeconds: 30
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# -- Namespaces the API may act in (D21, R6). Empty denies everything.
+# Rendered as ALLOWED_NAMESPACES and as one Role + RoleBinding in each namespace (R11, R12, R14).
+# The namespaces must already exist when the release is installed.
+allowedNamespaces: []
+
+rbac:
+  # -- ClusterRole + binding for the API's workload management, and the per-namespace check Roles
+  enabled: true
+
+networkPolicy:
+  enabled: false
+  ingress: []
+  # -- Default: DNS only. Add the Kubernetes API endpoint (and any OIDC provider) per environment.
+  egress:
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+
+# -- Non-secret settings, rendered into a ConfigMap and loaded with envFrom (C10).
+# Names are the environment variables read by api_service/config.py. Empty values are skipped.
+# PORT, ALLOWED_NAMESPACES, BOOTSTRAP_SECRET_FILE and SIGNING_KEY_FILE are set by the chart, not here.
+config:
+  env:
+    ENVIRONMENT: "prod"
+    LOG_LEVEL: "info"
+    MOCK_AUTH_ENABLED: "false"
+    OIDC_ISSUER: ""
+    OIDC_AUDIENCE: "api-service"
+    OIDC_DISCOVERY_URL: ""
+    ALLOWED_REGISTRIES: ""
+    CORS_ALLOWED_ORIGINS: ""
+    MAX_REPLICAS: "20"
+    MAX_CPU_LIMIT: "2"
+    MAX_MEMORY_LIMIT: "2Gi"
+    # Applied when a create request omits `resources` (D31). Must satisfy V14 and the MAX_* caps.
+    DEFAULT_CPU_REQUEST: "50m"
+    DEFAULT_MEMORY_REQUEST: "64Mi"
+    DEFAULT_CPU_LIMIT: "200m"
+    DEFAULT_MEMORY_LIMIT: "128Mi"
+    PROGRESS_DEADLINE_SECONDS: "60"
+    KUBE_REQUEST_TIMEOUT_SECONDS: "10"
+    OTEL_EXPORTER_OTLP_ENDPOINT: ""
+    OTEL_EXPORTER_OTLP_PROTOCOL: ""
+    OTEL_SERVICE_NAME: ""
+    OTEL_RESOURCE_ATTRIBUTES: ""
+
+# -- The control plane's own secrets, mounted read-only as files (K1). Only paths reach the environment.
+secrets:
+  # -- Name of an existing Secret (External Secrets Operator, Vault, SOPS). Empty: use secretData below, or mount nothing.
+  existingSecret: ""
+  mountPath: /var/run/api-secrets
+  # -- Secret key holding the token-minting bootstrap secret (BOOTSTRAP_SECRET_FILE). Needed only with mock identity.
+  bootstrapSecretKey: bootstrap-secret
+  # -- Secret key holding the PEM signing key (SIGNING_KEY_FILE)
+  signingKey: signing-key
+
+# -- Chart-created Secret for local use only. Never commit real values; see environments/<env>/api-service.secrets.example.yaml.
+secretData:
+  enabled: false
+  data: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

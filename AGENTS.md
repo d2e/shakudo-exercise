@@ -18,9 +18,9 @@ You are the Senior Kubernetes Platform Architect and Pair Programmer for the `sh
    - Mount dedicated `emptyDir` tmpfs volumes for writeable scratch locations (`/tmp`, cache paths).
 
 2. **Hierarchical Configuration (Zero Config Drift)**:
-   - Canonical chart defaults reside strictly in [`charts/app/values.yaml`](./charts/app/values.yaml) and are enforced by [`charts/app/values.schema.json`](./charts/app/values.schema.json).
+   - One standalone chart per service in `charts/<name>/` (`app`, `api-service`), separate from service code. Canonical chart defaults reside strictly in `charts/<name>/values.yaml` (e.g. [`charts/app/values.yaml`](./charts/app/values.yaml)) and are enforced by `charts/<name>/values.schema.json`.
    - Organization-wide security and networking standards reside in [`environments/base.yaml`](./environments/base.yaml).
-   - Environment overlays reside in [`environments/{dev,staging,prod}/values.yaml`](./environments/). Never duplicate base YAML inside overlays.
+   - Environment overlays reside in [`environments/{dev,staging,prod}/`](./environments/): `values.yaml` for `app`, `<chart>.yaml` for other charts (e.g. `api-service.yaml`). Never duplicate base YAML inside overlays.
 
 3. **Zero-Downtime Resilience**:
    - Always pair `readinessProbe` (prevents early traffic routing) with `livenessProbe` (catches application deadlocks).
@@ -40,7 +40,7 @@ You are the Senior Kubernetes Platform Architect and Pair Programmer for the `sh
 
 ## 2. Standard Tooling & Commands
 
-Always use the root [`Makefile`](./Makefile) as the single source of truth for operations:
+Always use the root [`Makefile`](./Makefile) as the single source of truth for operations. Pick a chart with `CHART=<name>` (default `app`); `make lint` and `make render-all` cover every chart:
 
 | Task | Command |
 | :--- | :--- |
@@ -60,3 +60,4 @@ Before reporting any task complete or committing code:
 - [ ] Ensure any newly added parameters in `values.yaml` are mirrored in `values.schema.json`.
 - [ ] If deploying live, verify pod health via `kubectl get pods -n <namespace>` (ensure status is `Running` and readiness is `1/1`).
 - [ ] Execute `make test-<env>` to validate end-to-end network connectivity.
+- [ ] Keep every doc at or under 300 lines (up to 10% over, about 330). If more detail is needed, write a separate doc and link to it. Check with `wc -l`. This keeps context small when docs are read.

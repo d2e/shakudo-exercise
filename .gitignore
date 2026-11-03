@@ -1,12 +1,14 @@
 # Kubernetes & Helm Artifacts
 *.tgz
 *.lock
-charts/app/charts/
-charts/app/Chart.lock
+charts/*/charts/
+charts/*/Chart.lock
 
 # Secret values (NEVER commit plain secrets)
 environments/**/secrets.yaml
+environments/**/*.secrets.yaml
 !environments/**/secrets.example.yaml
+!environments/**/*.secrets.example.yaml
 
 # Environment & local overrides
 .env

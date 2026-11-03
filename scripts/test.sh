@@ -2,8 +2,9 @@
 set -euo pipefail
 
 ENV="${1:-dev}"
-RELEASE_NAME="${2:-app-${ENV}}"
-NAMESPACE="${3:-app-${ENV}}"
+CHART="${CHART:-app}"
+RELEASE_NAME="${2:-${CHART}-${ENV}}"
+NAMESPACE="${3:-${CHART}-${ENV}}"
 
 echo "=========================================================="
 echo " Running Helm integration tests for ${RELEASE_NAME}"
