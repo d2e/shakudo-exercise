@@ -70,7 +70,20 @@ Configuration is layered, with the later layer winning, and secrets never enter 
          \______________  helm template / upgrade  (make lint | render-<env> | deploy-<env>)  ______________/
 ```
 
-Full diagrams (components, one command, log streaming), where each rule is enforced, and a code map:
+What runs in the cluster (a single-node k3s today; the live dev environment is the one verified end to end):
+
+```text
+ kube-system          Traefik (IngressClass "traefik"), CoreDNS, metrics-server, local-path storage
+ api-service-<env>    one Helm release: Ingress -> Service -> API Deployment, ConfigMap, Secret, ServiceAccount
+ cluster-wide         one ClusterRole + binding: namespaces, deployments, replicasets, pods, pods/log (never secrets)
+ allowed namespaces   a Role + binding (Secret labels, emptiness check) and the Deployments the API creates,
+                      labelled managed-by=control-plane, running pod-security "restricted"
+```
+
+Staging and prod add TLS, an HPA, a PodDisruptionBudget (1 and 2), a default-deny NetworkPolicy, the sticky cookie and an
+external Secret for the signing key; those are rendered and linted but not yet exercised on a live cluster.
+
+Full diagrams (components, the Kubernetes layout, one command, log streaming), where each rule is enforced, and a code map:
 [`control-plane/docs/architecture.md`](./control-plane/docs/architecture.md).
 
 ### Sequence diagrams
