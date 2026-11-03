@@ -26,11 +26,11 @@ Part of the spec set indexed in [`req.md`](./req.md) (Part 1 error handling, Par
 | # | Field | Required | Rule |
 | :-- | :--- | :--- | :--- |
 | V9 | `name` | yes | DNS-1123 label: `^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`, 1 to 63 chars. Rejects uppercase, `_`, `.`, spaces, leading or trailing `-`, empty. |
-| V10 | `namespace` | yes | Same DNS-1123 label rule. Reserved system namespaces are rejected (assumption below). |
-| V11 | `image` | yes | Valid container image reference: `[registry[:port]/]path[:tag][@sha256:<64 hex>]`, path lowercase, no spaces, max 255 chars. A tag or digest is **required**, and `latest` is rejected (D4). Rejects `""`, `nginx:`, `nginx::1`, `NGINX:1.0`, `nginx:bad tag`. |
-| V12 | `replicas` | no (1) | Integer from 0 to `MAX_REPLICAS` (20, assumption). Negative gives 400. |
+| V10 | `namespace` | yes | Same DNS-1123 label rule. Reserved system namespaces are rejected (assumption below). The namespace must also be on the allowlist, checked after validation and answered with 403 (R6, R7). |
+| V11 | `image` | yes | Valid container image reference: `[registry[:port]/]path[:tag][@sha256:<64 hex>]`, path lowercase, no spaces, max 255 chars. A tag or digest is **required**, and `latest` is rejected (D4). Rejects `""`, `nginx:`, `nginx::1`, `NGINX:1.0`, `nginx:bad tag`. The registry must be on `ALLOWED_REGISTRIES` when that is set (R20). |
+| V12 | `replicas` | no (1) | Integer from 0 to `MAX_REPLICAS` (20, R19). Negative gives 400. |
 | V13 | `port` | no | Integer 1 to 65535. |
-| V14 | `resources` | yes | Both `requests` and `limits`, each with `cpu` and `memory`. Quantities must parse (`100m`, `0.5`, `128Mi`, `1Gi`) and be greater than 0. `limits` must be at least `requests`, for cpu and for memory. Configured maximums apply (assumption). |
+| V14 | `resources` | yes | Both `requests` and `limits`, each with `cpu` and `memory`. Quantities must parse (`100m`, `0.5`, `128Mi`, `1Gi`) and be greater than 0. `limits` must be at least `requests`, for cpu and for memory. The caps in R19 apply (CPU limit up to 2, memory limit up to 2 GiB). |
 | V15 | `env` | no | Array, max 50. Each entry has `name` matching `^[A-Za-z_][A-Za-z0-9_]*$` and exactly one of `value` (string, max 4096) or a Secret reference (`name` as a DNS-1123 subdomain, `key` matching `^[-._a-zA-Z0-9]{1,253}$`, see K8–K10). No duplicate names. |
 | V16 | `labels` | no | Max 20. Keys and values follow Kubernetes label syntax (optional DNS-subdomain prefix, name up to 63 chars, value up to 63 chars). Reserved keys (`app.kubernetes.io/managed-by` and the selector label) are rejected with 400, not overridden. |
 | V17 | `command`, `args` | no | Arrays of strings, max 50 items, each up to 4096 chars. `command` entries are not empty. |
@@ -54,8 +54,8 @@ Part of the spec set indexed in [`req.md`](./req.md) (Part 1 error handling, Par
 
 ## Assumptions to confirm
 
-1. Limits: `MAX_REPLICAS` 20, 1 MiB body, 50 env entries, and configurable cpu and memory maximums (values not yet chosen).
+1. Limits: `MAX_REPLICAS` 20, 1 MiB body, 50 env entries, and the CPU and memory caps from R19.
 2. Reserved namespaces rejected on create: `kube-system`, `kube-public`, `kube-node-lease`.
 3. Reserved labels are rejected (400) rather than silently overridden.
 4. A malformed `:id` is 400 rather than 404.
-5. Registry allowlisting is out of scope.
+5. Registry allowlisting is a setting (R20), required outside dev.

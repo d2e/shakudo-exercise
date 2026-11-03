@@ -61,6 +61,26 @@ One test, in this order, each step checked against the live cluster:
 | Q25 | Invalid input | 400, and the Kubernetes client is not called (V22) |
 | Q26 | Deployment not created by the API (no managed label) | 404, and it is never modified (D2) |
 
+## Security tests
+
+Rules are in [req-security.md](./req-security.md). Tests that need a cluster are integration tests; the rest are unit tests.
+
+| # | Case | Expected |
+| :-- | :--- | :--- |
+| Q29 | Mint a token without the bootstrap secret, with a wrong one, and with the right one | 401, 401, 200; the secret never appears in logs (R1, R2) |
+| Q30 | Start with `MOCK_AUTH_ENABLED=true` in a non-dev environment | startup fails (R3) |
+| Q31 | Empty allowlist; namespace outside the list; reserved namespace that is listed | all 403, and no Kubernetes call (R6–R8) |
+| Q32 | Namespace delete when it is not managed, not allowlisted, not empty, or the check fails | the namespace is not deleted (R11) |
+| Q33 | Secret reference to a missing Secret, and to an unlabeled one | the same 400 `secret_not_allowed` for both (R12) |
+| Q34 | Exceed a rate limit | 429 with `Retry-After` (R18) |
+| Q35 | CLI with an `http://` non-local server | refused unless `--insecure` (R16) |
+| Q36 | CORS: default config, and a request with `Origin` | no CORS headers by default; wildcard with credentials never produced (R17) |
+| Q37 | Force a Kubernetes failure | the response has only the fixed message and a `request_id`, no hostnames or raw text (R24) |
+| Q38 | Render the chart | NetworkPolicy is default-deny with only the allowed egress (R22) |
+| Q39 | Request `/docs` and `/openapi.json` outside dev | 404, or 401 without a token (R23) |
+| Q40 | Render the chart with an enabled ingress and no TLS outside dev | schema rejects it (R15) |
+| Q41 | Open a fourth log stream for one user | refused (R21) |
+
 ## Running tests
 
 | # | Requirement |

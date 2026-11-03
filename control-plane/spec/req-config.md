@@ -31,9 +31,14 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only. Variabl
 | `HOST`, `PORT` | `0.0.0.0`, `8000` | listen address |
 | `LOG_LEVEL` | `info` | |
 | `OIDC_ISSUER`, `OIDC_AUDIENCE`, `OIDC_DISCOVERY_URL` | existing defaults | see [req-auth.md](./req-auth.md) |
-| `MOCK_AUTH_ENABLED` | `true` | demo only; refuse `true` in staging and prod (assumption) |
+| `MOCK_AUTH_ENABLED` | `true` | demo only; startup fails if `true` outside dev (R3) |
 | `ACCESS_TOKEN_TTL_SECONDS` | `300` | maximum 300 (T1) |
-| `REFRESH_TOKEN_TTL_SECONDS` | `28800` | 8 hours (T5) |
+| `REFRESH_TOKEN_TTL_SECONDS` | `3600` | 1 hour (T5, R5) |
+| `ALLOWED_NAMESPACES` | empty (deny all) | namespaces the API may touch (R6) |
+| `ALLOWED_REGISTRIES` | empty | permitted image registries; required outside dev (R20) |
+| `CORS_ALLOWED_ORIGINS` | empty | no CORS headers by default (R17) |
+| rate limit settings | see R18 | per client, configurable |
+| bootstrap secret path | none | file from a Secret, for token minting (R1, R2) |
 | `PROGRESS_DEADLINE_SECONDS` | `60` | applied on create |
 | `OTEL_*` | unset | see [req-observability.md](./req-observability.md) |
 | signing key path | none | file from a Secret (K1) |
@@ -42,6 +47,6 @@ Part of the spec set indexed in [`req.md`](./req.md). Requirements only. Variabl
 
 1. The variable names above.
 2. One cluster only. A cluster list or multi-cluster support is out of scope.
-3. The old `ALLOWED_NAMESPACES` allowlist is not carried over: scope is set by the managed label (D2). Say if namespace restriction is still wanted.
+3. The `ALLOWED_NAMESPACES` allowlist is **restored** (D21, R6). The managed label (D2) limits which deployments are visible; the allowlist limits where the API may act at all.
 4. `MOCK_AUTH_ENABLED=true` is refused outside dev by the chart schema or startup check.
 5. Configuration comes from environment variables only. No config file format is defined.

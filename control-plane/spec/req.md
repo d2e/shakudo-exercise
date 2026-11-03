@@ -154,6 +154,8 @@ The assessment text above is the source requirement. Details are split by catego
 | Validation | [req-validation.md](./req-validation.md) | static input checks, field rules, 400 behaviour |
 | Tests | [req-tests.md](./req-tests.md) | unit and integration tests, lifecycle, health mapping, errors |
 | Pod health | [req-health.md](./req-health.md) | liveness and readiness of the API pod itself |
+| Security | [req-security.md](./req-security.md) | token minting, namespace scope, Secret references, TLS, limits |
+| Review | [review-security.md](./review-security.md), [review-validation.md](./review-validation.md) | findings behind the security and consistency fixes |
 
 ## Decisions
 
@@ -178,8 +180,12 @@ The assessment text above is the source requirement. Details are split by catego
 | D17 | Auth order | Authentication runs before any handler: before validation and any Kubernetes call | Auth |
 | D18 | Pod health | `/healthz` (liveness) and `/readyz` (readiness, checks the cluster live) for the API pod | Pod health |
 | D19 | Signing key cache | Token signing keys are cached and tokens are validated against the cached key. Kubernetes data is still never cached | Auth |
+| D20 | Token minting | Needs a bootstrap secret and is refused outside dev | Security |
+| D21 | Namespace scope | `ALLOWED_NAMESPACES` allowlist, empty denies all; refused with 403 before any Kubernetes call | Security |
+| D22 | Secret references | Only Secrets carrying an allow label | Security |
+| D23 | Transport | HTTPS required in staging and prod; CLI refuses plain `http://` except localhost | Security |
 
-Rule IDs in the category files: `N` no caching, `T` tokens, `A` auth order, `O` observability, `S` deployment status, `K` secrets, `C` config, `V` validation, `Q` tests, `P` versioning, `H` pod health, `U` UI.
+Rule IDs in the category files: `N` no caching, `T` tokens, `A` auth order, `O` observability, `S` deployment status, `K` secrets, `C` config, `V` validation, `Q` tests, `P` versioning, `H` pod health, `U` UI, `R` security.
 
 ## Out of scope
 

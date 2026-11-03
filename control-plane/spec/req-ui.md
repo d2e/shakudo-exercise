@@ -25,7 +25,7 @@ Part of the spec set indexed in [`req.md`](./req.md) (Part 3). **Not in scope no
 | U6 | **The API is the only contract.** The UI uses the same endpoints as the CLI. No behaviour exists only in the CLI. |
 | U7 | **Health values map cleanly to colors:** `HEALTHY` green, `PROGRESSING` and `DEGRADED` yellow, `FAILING` red, `UNKNOWN` grey (assumption). The API returns the enum, never a color. |
 | U8 | **Polling-safe.** Every GET is fresh and `no-store` (N1, N6). Reads are cheap enough for 5 to 10 s polling by several users. Rate limiting must allow that rate. |
-| U9 | **CORS is a setting** (allowed origins), **off by default**. The current wildcard `*` with credentials in `app/main.py` must not be carried over. |
+| U9 | **CORS is a setting** (allowed origins), **off by default**. The current wildcard `*` with credentials in `app/main.py` must not be carried over (R17, tested in Q36). |
 | U10 | **Token handling for browsers** (5-minute tokens, refresh) follows [req-auth.md](./req-auth.md). The browser flow itself is decided when the UI starts. |
 | U11 | **Machine-readable errors** (V3) so the UI can show field-level messages. |
 

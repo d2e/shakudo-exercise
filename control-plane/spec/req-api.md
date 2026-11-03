@@ -27,7 +27,7 @@ Part of the spec set indexed in [`req.md`](./req.md). Endpoints and the request 
 
 ## Behaviour
 
-- **Errors** follow the assessment: 400 invalid input, 404 unknown id, 409 duplicate name in the namespace, 500 for Kubernetes failures with a meaningful message. Bodies are structured JSON (`error.code`, `error.message`, `request_id`; shape is an assumption).
+- **Errors** follow the assessment: 400 invalid input, 404 unknown id, 409 duplicate name in the namespace, 500 for Kubernetes failures with a meaningful message. Added: 401 unauthenticated, 403 namespace not allowed (R7), 429 rate limited (R18). Bodies are structured JSON (`error.code`, `error.message`, `request_id`; shape is an assumption). Messages for Kubernetes failures are fixed and sanitized (R24).
 - **PATCH** accepts `replicas` and/or `image` (at least one). Other fields are rejected with 400. A new image triggers a rolling update.
 - **Create** requires `name`, `namespace`, `image` and all four resource values. Defaults: `replicas` 1, `env` and `labels` empty. It sets `progressDeadlineSeconds` to 60 (assumption) so a bad image reaches `FAILING` quickly.
 - **Delete** cascades to ReplicaSets and Pods (foreground propagation), then applies D9.
@@ -53,8 +53,8 @@ The one exception is the token signing key, which is cached and validated agains
 
 - The `:id` lookup lists managed deployments on every request: slower on large clusters, accepted.
 - If the cluster is unreachable, the API returns 500 and serves no stale data. Load grows with request volume, so rate limiting is the control.
-- **Kubernetes RBAC** must grow beyond the current role: `patch` and `delete` on deployments, and `delete` on namespaces.
-- D9 is the riskiest decision: a cluster-wide namespace delete permission, and an emptiness check that can race with a new deployment landing in the same namespace. Mitigations: only delete namespaces carrying the managed label, and re-check emptiness immediately before deleting.
+- **Kubernetes RBAC model.** A ClusterRole grants `create`, `get`, `list`, `patch`, `delete` on deployments and `create`, `get`, `list`, `delete` on namespaces. Roles in allowlisted namespaces grant `get` on Secrets (R14) and `list` on the kinds needed for the emptiness check (R11). The allowlist (R6) and managed label (D2) are enforced by the API, because Kubernetes RBAC cannot limit by label.
+- D9 is the riskiest decision: a namespace delete permission, and an emptiness check that can race with a new deployment landing in the same namespace. Mitigations (R11): only allowlisted namespaces carrying the managed label, a final live check of the listed kinds immediately before deleting, and no deletion if the check cannot be completed.
 - D8: arbitrary public images that need root or a writable root filesystem will fail to start. That is expected.
 
 ## Assumptions to confirm
@@ -63,3 +63,5 @@ The one exception is the token signing key, which is cached and validated agains
 2. The error body shape.
 3. Namespace deletion applies only to namespaces the API created (managed label on the namespace).
 4. Out of scope: Service or Ingress creation, multi-container pods, multi-cluster, secrets in `env`.
+5. Gaps accepted for v1: no pagination on list, `DELETE` and `restart` are idempotent in effect (a second call returns 404 or repeats the restart), and concurrent `PATCH` calls are last-write-wins unless `resourceVersion` conflicts return 409 (assumption).
+6. Every call to the cluster has a timeout (`KUBE_REQUEST_TIMEOUT_SECONDS`, C2); a timeout is a 500 with the sanitized message.
